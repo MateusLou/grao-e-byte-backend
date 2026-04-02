@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 
     // Filtrar apenas produtos com estoque > 0
     const produtosComEstoque = produtos
-      .filter((p) => (estoqueMap[p._id.toString()] || 0) > 0)
+      .filter((p) => (estoqueMap[p._id.toString()] ?? 0) > 0)
       .map((p) => ({
         _id: p._id,
         nome: p.nome,
