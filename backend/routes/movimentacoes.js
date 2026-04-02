@@ -25,6 +25,22 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ erro: 'Quantidade deve ser pelo menos 1' });
     }
 
+    // Validar estoque antes de permitir saida
+    if (tipo === 'saida') {
+      const entradas = await Movimentacao.aggregate([
+        { $match: { produtoId: produto._id, tipo: 'entrada' } },
+        { $group: { _id: null, total: { $sum: '$quantidade' } } }
+      ]);
+      const saidas = await Movimentacao.aggregate([
+        { $match: { produtoId: produto._id, tipo: 'saida' } },
+        { $group: { _id: null, total: { $sum: '$quantidade' } } }
+      ]);
+      const estoqueAtual = (entradas[0]?.total || 0) - (saidas[0]?.total || 0);
+      if (quantidade > estoqueAtual) {
+        return res.status(400).json({ erro: `Estoque insuficiente. Disponivel: ${estoqueAtual}` });
+      }
+    }
+
     const movimentacao = await Movimentacao.create({
       produtoId,
       tipo,

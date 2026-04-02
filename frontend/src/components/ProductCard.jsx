@@ -11,7 +11,7 @@ const CORES_CATEGORIA = {
 
 const COR_TAG = '#2563EB';
 
-function ProductCard({ produto, onMovimentacao, isGerente, onToggleAtivo, isPiorVenda, showOrdering, onMoveUp, onMoveDown }) {
+function ProductCard({ produto, onMovimentacao, isGerente, onToggleAtivo, isPiorVenda, showOrdering, onMoveUp, onMoveDown, modoVenda }) {
   const navigate = useNavigate();
   const [movTipo, setMovTipo] = useState(null);
   const [quantidade, setQuantidade] = useState('');
@@ -119,17 +119,19 @@ function ProductCard({ produto, onMovimentacao, isGerente, onToggleAtivo, isPior
               <>
                 {movTipo === null ? (
                   <div className="estoque-botoes">
-                    <button className="btn-entrada" onClick={() => setMovTipo('entrada')}>
-                      + Entrada
-                    </button>
+                    {!modoVenda && (
+                      <button className="btn-entrada" onClick={() => setMovTipo('entrada')}>
+                        + Entrada
+                      </button>
+                    )}
                     <button className="btn-saida" onClick={() => setMovTipo('saida')}>
-                      - Saída
+                      {modoVenda ? 'Adicionar a Venda' : '- Saída'}
                     </button>
                   </div>
                 ) : (
                   <div className="mov-input-grupo">
                     <span className="mov-input-label">
-                      {movTipo === 'entrada' ? '+ Entrada' : '- Saída'}
+                      {modoVenda ? 'Quantidade' : movTipo === 'entrada' ? '+ Entrada' : '- Saída'}
                     </span>
                     <div className="mov-input-row">
                       <input
@@ -164,7 +166,7 @@ function ProductCard({ produto, onMovimentacao, isGerente, onToggleAtivo, isPior
             </div>
           </div>
         ) : (
-          isGerente && (
+          !modoVenda && isGerente && (
             <div className="product-card-acoes">
               <button
                 className="btn-editar"

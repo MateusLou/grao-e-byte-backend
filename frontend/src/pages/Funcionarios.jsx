@@ -8,8 +8,10 @@ function Funcionarios() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [funcionarios, setFuncionarios] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [cadastrando, setCadastrando] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('userRole');
@@ -67,6 +69,12 @@ function Funcionarios() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (senha !== confirmarSenha) {
+      showToast('As senhas nao coincidem', 'error');
+      return;
+    }
+
+    setCadastrando(true);
     try {
       const response = await fetch('/api/auth/registro', {
         method: 'POST',
@@ -88,9 +96,12 @@ function Funcionarios() {
       setNome('');
       setEmail('');
       setSenha('');
+      setConfirmarSenha('');
       carregarFuncionarios();
     } catch {
       showToast('Erro de conexao com o servidor', 'error');
+    } finally {
+      setCadastrando(false);
     }
   };
 
@@ -141,8 +152,25 @@ function Funcionarios() {
               />
             </div>
 
-            <button type="submit" className="btn-primario">
-              Cadastrar Funcionário
+            <div className="form-group">
+              <label>Confirmar Senha</label>
+              <input
+                type="password"
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                placeholder="Repita a senha"
+                required
+                minLength={4}
+              />
+              {confirmarSenha && senha !== confirmarSenha && (
+                <span style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
+                  As senhas nao coincidem
+                </span>
+              )}
+            </div>
+
+            <button type="submit" className="btn-primario" disabled={cadastrando}>
+              {cadastrando ? 'Cadastrando...' : 'Cadastrar Funcionário'}
             </button>
           </form>
         </div>

@@ -2,6 +2,7 @@ const express = require('express');
 const Meta = require('../models/Meta');
 const auth = require('../middleware/auth');
 const requireGerente = require('../middleware/requireGerente');
+const { registrarLog } = require('../helpers/logHelper');
 
 const router = express.Router();
 
@@ -27,6 +28,7 @@ router.post('/', auth, requireGerente, async (req, res) => {
       fimVigencia,
       criadoPor: req.userId
     });
+    registrarLog({ acao: 'meta', entidade: 'meta', entidadeId: meta._id, entidadeNome: `${metrica === 'faturamento' ? 'Faturamento' : 'Pedidos'} (${tipo === 'diaria' ? 'Diária' : 'Semanal'})`, userId: req.userId, detalhes: `Meta criada: ${metrica === 'faturamento' ? 'R$' + valor : valor + ' pedidos'}` });
     res.status(201).json(meta);
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao criar meta' });
@@ -45,6 +47,7 @@ router.put('/:id', auth, requireGerente, async (req, res) => {
     if (!meta) {
       return res.status(404).json({ erro: 'Meta nao encontrada' });
     }
+    registrarLog({ acao: 'meta', entidade: 'meta', entidadeId: meta._id, entidadeNome: `${metrica === 'faturamento' ? 'Faturamento' : 'Pedidos'} (${tipo === 'diaria' ? 'Diária' : 'Semanal'})`, userId: req.userId, detalhes: `Meta atualizada: ${metrica === 'faturamento' ? 'R$' + valor : valor + ' pedidos'}` });
     res.json(meta);
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao atualizar meta' });
@@ -58,6 +61,7 @@ router.delete('/:id', auth, requireGerente, async (req, res) => {
     if (!meta) {
       return res.status(404).json({ erro: 'Meta nao encontrada' });
     }
+    registrarLog({ acao: 'meta', entidade: 'meta', entidadeId: meta._id, entidadeNome: `${meta.metrica === 'faturamento' ? 'Faturamento' : 'Pedidos'} (${meta.tipo === 'diaria' ? 'Diária' : 'Semanal'})`, userId: req.userId, detalhes: 'Meta removida' });
     res.json({ mensagem: 'Meta removida' });
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao remover meta' });

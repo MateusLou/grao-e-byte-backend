@@ -5,9 +5,9 @@ import ProductForm from './pages/ProductForm';
 import Movimentacoes from './pages/Movimentacoes';
 import Funcionarios from './pages/Funcionarios';
 import AlertasEstoque from './pages/AlertasEstoque';
-import Logs from './pages/Logs';
 import Dashboard from './pages/Dashboard';
 import Cardapio from './pages/Cardapio';
+import Vendas from './pages/Vendas';
 
 function App() {
   return (
@@ -15,12 +15,13 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/products" element={<Products />} />
+      <Route path="/vendas" element={<Vendas />} />
       <Route path="/products/novo" element={<ProductForm />} />
       <Route path="/products/editar/:id" element={<ProductForm />} />
       <Route path="/movimentacoes" element={<Movimentacoes />} />
       <Route path="/funcionarios" element={<Funcionarios />} />
       <Route path="/alertas" element={<AlertasEstoque />} />
-      <Route path="/logs" element={<Logs />} />
+      <Route path="/logs" element={<Navigate to="/movimentacoes" />} />
       <Route path="/cardapio" element={<Cardapio />} />
       <Route path="*" element={<Navigate to="/login" />} />
     </Routes>

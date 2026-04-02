@@ -16,6 +16,7 @@ function Products() {
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
   const [tagsSelecionadas, setTagsSelecionadas] = useState([]);
   const [tagsDisponiveis, setTagsDisponiveis] = useState([]);
+  const [ordenacao, setOrdenacao] = useState('padrao');
   const [toggleTarget, setToggleTarget] = useState(null);
   const [ordenacaoLocal, setOrdenacaoLocal] = useState([]);
   const [ordenacaoAlterada, setOrdenacaoAlterada] = useState(false);
@@ -163,8 +164,48 @@ function Products() {
       );
     }
 
+    // Filtros de estoque
+    if (ordenacao === 'critico') {
+      result = result.filter((p) => {
+        const vmd = p.vendaMediaDiaria || 0;
+        return vmd > 0 && (p.estoque || 0) <= vmd;
+      });
+    } else if (ordenacao === 'alerta') {
+      result = result.filter((p) => {
+        const vmd = p.vendaMediaDiaria || 0;
+        return vmd > 0 && (p.estoque || 0) <= vmd * 2;
+      });
+    }
+
+    // Ordenacao
+    result = [...result];
+    switch (ordenacao) {
+      case 'estoque-asc':
+        result.sort((a, b) => (a.estoque || 0) - (b.estoque || 0));
+        break;
+      case 'estoque-desc':
+        result.sort((a, b) => (b.estoque || 0) - (a.estoque || 0));
+        break;
+      case 'critico':
+      case 'alerta':
+        result.sort((a, b) => (a.estoque || 0) - (b.estoque || 0));
+        break;
+      case 'preco-asc':
+        result.sort((a, b) => a.preco - b.preco);
+        break;
+      case 'preco-desc':
+        result.sort((a, b) => b.preco - a.preco);
+        break;
+      case 'nome-az':
+        result.sort((a, b) => a.nome.localeCompare(b.nome));
+        break;
+      case 'nome-za':
+        result.sort((a, b) => b.nome.localeCompare(a.nome));
+        break;
+    }
+
     return result;
-  }, [produtos, abaAtiva, filtroAtivo, termoBusca, tagsSelecionadas]);
+  }, [produtos, abaAtiva, filtroAtivo, termoBusca, tagsSelecionadas, ordenacao]);
 
   // Ordenacao personalizada
   const [ordemCategorias, setOrdemCategorias] = useState(() => {
@@ -326,20 +367,40 @@ function Products() {
         )}
       </div>
 
-      {/* Filtro ativo/inativo */}
-      {isGerente && (
-        <div className="filtro-ativo-bar">
-          {['todos', 'ativos', 'inativos'].map((f) => (
-            <button
-              key={f}
-              className={`filtro-ativo-btn ${filtroAtivo === f ? 'filtro-ativo-btn-selected' : ''}`}
-              onClick={() => setFiltroAtivo(f)}
-            >
-              {f === 'todos' ? 'Todos' : f === 'ativos' ? 'Ativos' : 'Inativos'}
-            </button>
-          ))}
+      {/* Filtro ativo/inativo + Ordenacao */}
+      <div className="filtros-grid filtros-grid-2" style={{ marginBottom: 12, gap: 12 }}>
+        {isGerente && (
+          <div className="filtro-ativo-bar" style={{ marginBottom: 0 }}>
+            {['todos', 'ativos', 'inativos'].map((f) => (
+              <button
+                key={f}
+                className={`filtro-ativo-btn ${filtroAtivo === f ? 'filtro-ativo-btn-selected' : ''}`}
+                onClick={() => setFiltroAtivo(f)}
+              >
+                {f === 'todos' ? 'Todos' : f === 'ativos' ? 'Ativos' : 'Inativos'}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="filtro-grupo">
+          <label className="filtro-label">Ordenar por</label>
+          <select
+            className="filtro-select"
+            value={ordenacao}
+            onChange={(e) => setOrdenacao(e.target.value)}
+          >
+            <option value="padrao">Padrao</option>
+            <option value="estoque-asc">Menor Estoque</option>
+            <option value="estoque-desc">Maior Estoque</option>
+            <option value="critico">Estoque Critico</option>
+            <option value="alerta">Em Alerta</option>
+            <option value="preco-asc">Menor Preco</option>
+            <option value="preco-desc">Maior Preco</option>
+            <option value="nome-az">Nome A-Z</option>
+            <option value="nome-za">Nome Z-A</option>
+          </select>
         </div>
-      )}
+      </div>
 
       {/* Tags filter */}
       {tagsDisponiveis.length > 0 && (
@@ -380,7 +441,7 @@ function Products() {
       )}
 
       {/* Contador de resultados */}
-      {(termoBusca || tagsSelecionadas.length > 0 || filtroAtivo !== 'todos') && (
+      {(termoBusca || tagsSelecionadas.length > 0 || filtroAtivo !== 'todos' || ordenacao !== 'padrao') && (
         <p className="search-count">{produtosFiltrados.length} produto(s) encontrado(s)</p>
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function Layout({ children }) {
@@ -7,6 +7,20 @@ function Layout({ children }) {
   const nomeUsuario = localStorage.getItem('nomeUsuario');
   const isGerente = localStorage.getItem('userRole') === 'gerente';
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [alertaCount, setAlertaCount] = useState(0);
+
+  useEffect(() => {
+    if (!isGerente) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/products', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        const criticos = data.filter(p => p.ativo !== false && (p.estoque || 0) <= (p.vendaMediaDiaria || 0) && (p.vendaMediaDiaria || 0) > 0);
+        setAlertaCount(criticos.length);
+      })
+      .catch(() => {});
+  }, [location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -71,6 +85,18 @@ function Layout({ children }) {
             Produtos
           </button>
 
+          <button
+            className={`sidebar-link ${isActive('/vendas') ? 'sidebar-link-ativo' : ''}`}
+            onClick={() => navTo('/vendas')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+            Vendas
+          </button>
+
           {isGerente && (
             <button
               className={`sidebar-link ${isActive('/products/novo') ? 'sidebar-link-ativo' : ''}`}
@@ -112,17 +138,9 @@ function Layout({ children }) {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
                 Alertas
-              </button>
-
-              <button
-                className={`sidebar-link ${isActive('/logs') ? 'sidebar-link-ativo' : ''}`}
-                onClick={() => navTo('/logs')}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                Histórico
+                {alertaCount > 0 && (
+                  <span className="sidebar-badge">{alertaCount}</span>
+                )}
               </button>
 
               <button
