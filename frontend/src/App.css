@@ -2651,6 +2651,20 @@ body {
 
 .meta-form-row select:focus { border-color: #D97706; }
 
+.meta-confirm-delete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #FEF2F2;
+  border: 1.5px solid #EF4444;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #991B1B;
+}
+
 /* Grafico por hora */
 .hourly-chart-wrapper {
   overflow-x: auto;

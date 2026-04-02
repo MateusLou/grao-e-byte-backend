@@ -156,7 +156,7 @@ function Vendas() {
     return carrinho.reduce((acc, item) => acc + item.quantidade, 0);
   }, [carrinho]);
 
-  // Criar venda
+  // Criar venda (refresh estoque antes de enviar)
   const finalizarVenda = async () => {
     if (carrinho.length === 0) {
       showToast('Adicione pelo menos um item', 'warning');
@@ -165,6 +165,8 @@ function Vendas() {
 
     setEnviando(true);
     try {
+      // Refresh estoque antes de enviar para evitar dados desatualizados
+      await carregarProdutos();
       const res = await fetch('/api/vendas', {
         method: 'POST',
         headers: {
@@ -433,6 +435,7 @@ function Vendas() {
                         <button
                           className="pdv-qty-btn"
                           onClick={() => alterarQuantidade(item.produtoId, item.quantidade - 1)}
+                          disabled={enviando}
                         >
                           -
                         </button>
@@ -440,7 +443,7 @@ function Vendas() {
                         <button
                           className="pdv-qty-btn"
                           onClick={() => alterarQuantidade(item.produtoId, item.quantidade + 1)}
-                          disabled={item.quantidade >= item.estoque}
+                          disabled={enviando || item.quantidade >= item.estoque}
                           title={item.quantidade >= item.estoque ? 'Estoque máximo atingido' : ''}
                         >
                           +
@@ -448,6 +451,7 @@ function Vendas() {
                         <button
                           className="pdv-remove-btn"
                           onClick={() => removerDoCarrinho(item.produtoId)}
+                          disabled={enviando}
                           title="Remover"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -481,6 +485,7 @@ function Vendas() {
                   <button
                     className="btn-cancelar"
                     onClick={() => setCarrinho([])}
+                    disabled={enviando}
                     style={{ marginTop: 8 }}
                   >
                     Limpar Carrinho

@@ -10,18 +10,27 @@ const router = express.Router();
 // GET /api/dashboard - Dados agregados do dashboard
 router.get('/', auth, async (req, res) => {
   try {
+    const TZ = 'America/Sao_Paulo';
     const agora = new Date();
-    const inicioHoje = new Date(agora);
-    inicioHoje.setHours(0, 0, 0, 0);
 
-    const inicioOntem = new Date(inicioHoje);
-    inicioOntem.setDate(inicioOntem.getDate() - 1);
-    const fimOntem = new Date(inicioHoje);
+    // Calcular inicio/fim do dia no timezone local usando Intl
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ,
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    const hojeStr = formatter.format(agora); // YYYY-MM-DD no tz local
+    const inicioHoje = new Date(`${hojeStr}T00:00:00.000-03:00`);
 
-    const inicioSemPassada = new Date(inicioHoje);
-    inicioSemPassada.setDate(inicioSemPassada.getDate() - 7);
-    const fimSemPassada = new Date(inicioSemPassada);
-    fimSemPassada.setDate(fimSemPassada.getDate() + 1);
+    // Ajustar offset dinamicamente para horario de verao
+    const offsetMs = inicioHoje.getTime() - new Date(`${hojeStr}T00:00:00.000Z`).getTime();
+    const inicioHojeUTC = new Date(new Date(`${hojeStr}T00:00:00.000Z`).getTime() - offsetMs);
+    const fimHojeUTC = new Date(inicioHojeUTC.getTime() + 24 * 60 * 60 * 1000);
+
+    const inicioOntem = new Date(inicioHojeUTC.getTime() - 24 * 60 * 60 * 1000);
+    const fimOntem = new Date(inicioHojeUTC);
+
+    const inicioSemPassada = new Date(inicioHojeUTC.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fimSemPassada = new Date(inicioSemPassada.getTime() + 24 * 60 * 60 * 1000);
 
     const statusNaoCancelado = { status: { $ne: 'cancelado' } };
 
@@ -38,7 +47,7 @@ router.get('/', auth, async (req, res) => {
     ] = await Promise.all([
       // 1. Resumo financeiro - hoje
       Venda.aggregate([
-        { $match: { criadoEm: { $gte: inicioHoje }, ...statusNaoCancelado } },
+        { $match: { criadoEm: { $gte: inicioHojeUTC }, ...statusNaoCancelado } },
         { $group: { _id: null, faturamento: { $sum: '$total' }, pedidos: { $sum: 1 } } }
       ]),
 
@@ -95,7 +104,7 @@ router.get('/', auth, async (req, res) => {
 
       // 6. Top vendidos hoje
       Venda.aggregate([
-        { $match: { criadoEm: { $gte: inicioHoje }, ...statusNaoCancelado } },
+        { $match: { criadoEm: { $gte: inicioHojeUTC }, ...statusNaoCancelado } },
         { $unwind: '$itens' },
         { $group: { _id: '$itens.produtoId', nome: { $first: '$itens.nome' }, quantidade: { $sum: '$itens.quantidade' }, faturamento: { $sum: { $multiply: ['$itens.quantidade', '$itens.precoUnit'] } } } },
         { $sort: { quantidade: -1 } },
@@ -135,10 +144,10 @@ router.get('/', auth, async (req, res) => {
         .limit(15)
         .lean(),
 
-      // 9. Movimento por hora (hoje)
+      // 9. Movimento por hora (hoje) - com timezone correto
       Venda.aggregate([
-        { $match: { criadoEm: { $gte: inicioHoje }, ...statusNaoCancelado } },
-        { $group: { _id: { $hour: '$criadoEm' }, pedidos: { $sum: 1 }, faturamento: { $sum: '$total' } } },
+        { $match: { criadoEm: { $gte: inicioHojeUTC }, ...statusNaoCancelado } },
+        { $group: { _id: { $hour: { date: '$criadoEm', timezone: TZ } }, pedidos: { $sum: 1 }, faturamento: { $sum: '$total' } } },
         { $sort: { _id: 1 } }
       ])
     ]);

@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Venda = require('../models/Venda');
 const Product = require('../models/Product');
 const Movimentacao = require('../models/Movimentacao');
@@ -7,35 +8,69 @@ const { registrarLog } = require('../helpers/logHelper');
 
 const router = express.Router();
 
-// POST /api/vendas - Criar nova venda
+// POST /api/vendas - Criar nova venda (com transacao para evitar oversell)
 router.post('/', auth, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { itens } = req.body;
     if (!itens || !Array.isArray(itens) || itens.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ erro: 'Itens da venda sao obrigatorios' });
     }
 
+    // Validar quantidades positivas
+    for (const item of itens) {
+      const qty = item.quantidade || 0;
+      if (!Number.isInteger(qty) || qty <= 0) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ erro: 'Quantidade deve ser um numero inteiro positivo' });
+      }
+    }
+
+    // Buscar todos os produtos de uma vez (batch)
+    const produtoIds = itens.map(i => i.produtoId);
+    const produtos = await Product.find({ _id: { $in: produtoIds } }).session(session).lean();
+    const produtoMap = {};
+    produtos.forEach(p => { produtoMap[p._id.toString()] = p; });
+
+    // Validar que todos os produtos existem
+    for (const item of itens) {
+      if (!produtoMap[item.produtoId]) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ erro: `Produto ${item.produtoId} nao encontrado` });
+      }
+    }
+
+    // Calcular estoque de todos os produtos de uma vez (batch)
+    const estoques = await Movimentacao.aggregate([
+      { $match: { produtoId: { $in: produtos.map(p => p._id) } } },
+      { $group: {
+        _id: '$produtoId',
+        entradas: { $sum: { $cond: [{ $eq: ['$tipo', 'entrada'] }, '$quantidade', 0] } },
+        saidas: { $sum: { $cond: [{ $eq: ['$tipo', 'saida'] }, '$quantidade', 0] } }
+      }}
+    ]).session(session);
+
+    const estoqueMap = {};
+    estoques.forEach(e => { estoqueMap[e._id.toString()] = e.entradas - e.saidas; });
+
+    // Validar estoque para cada item
     const itensVenda = [];
     let total = 0;
 
     for (const item of itens) {
-      const produto = await Product.findById(item.produtoId);
-      if (!produto) {
-        return res.status(404).json({ erro: `Produto ${item.produtoId} nao encontrado` });
-      }
-      const qty = item.quantidade || 1;
+      const produto = produtoMap[item.produtoId];
+      const qty = item.quantidade;
+      const estoqueAtual = estoqueMap[item.produtoId] || 0;
 
-      // Validar estoque antes de permitir venda
-      const entradas = await Movimentacao.aggregate([
-        { $match: { produtoId: produto._id, tipo: 'entrada' } },
-        { $group: { _id: null, total: { $sum: '$quantidade' } } }
-      ]);
-      const saidas = await Movimentacao.aggregate([
-        { $match: { produtoId: produto._id, tipo: 'saida' } },
-        { $group: { _id: null, total: { $sum: '$quantidade' } } }
-      ]);
-      const estoqueAtual = (entradas[0]?.total || 0) - (saidas[0]?.total || 0);
       if (qty > estoqueAtual) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ erro: `Estoque insuficiente para "${produto.nome}". Disponivel: ${estoqueAtual}` });
       }
 
@@ -49,23 +84,26 @@ router.post('/', auth, async (req, res) => {
       total += subtotal;
     }
 
-    const venda = await Venda.create({
+    // Criar venda dentro da transacao
+    const [venda] = await Venda.create([{
       itens: itensVenda,
       total: Math.round(total * 100) / 100,
       status: 'em_andamento',
       userId: req.userId
-    });
+    }], { session });
 
-    // Criar movimentacoes de saida para cada item
-    for (const item of itensVenda) {
-      await Movimentacao.create({
-        produtoId: item.produtoId,
-        tipo: 'saida',
-        origem: 'venda',
-        quantidade: item.quantidade,
-        userId: req.userId
-      });
-    }
+    // Criar movimentacoes de saida em batch
+    const movimentacoes = itensVenda.map(item => ({
+      produtoId: item.produtoId,
+      tipo: 'saida',
+      origem: 'venda',
+      quantidade: item.quantidade,
+      userId: req.userId
+    }));
+    await Movimentacao.insertMany(movimentacoes, { session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     registrarLog({
       acao: 'venda',
@@ -78,6 +116,8 @@ router.post('/', auth, async (req, res) => {
 
     res.status(201).json(venda);
   } catch (erro) {
+    await session.abortTransaction();
+    session.endSession();
     res.status(500).json({ erro: 'Erro ao criar venda' });
   }
 });

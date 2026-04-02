@@ -24,6 +24,9 @@ function TopVendidos({ dados }) {
               </div>
               <span className="chart-bar-count">
                 {item.quantidade}x
+                <span style={{ fontSize: '0.72rem', color: '#6B7280', fontWeight: 500, marginLeft: 4 }}>
+                  R${item.faturamento?.toFixed(2) || '0.00'}
+                </span>
               </span>
             </div>
           ))}

@@ -43,12 +43,16 @@ mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('Conectado ao MongoDB!');
 
-    // Migration: garantir que o admin tenha role gerente
+    // Migration one-time: garantir que o admin tenha role gerente (so roda se nenhum gerente existir)
     const User = require('./models/User');
-    await User.updateMany(
-      { $or: [{ email: 'mateusgl@al.insper.edu.br' }, { email: 'mateus@gmail.com' }, { nome: 'Mateus Loureiro' }] },
-      { $set: { role: 'gerente' } }
-    );
+    const gerenteExiste = await User.findOne({ role: 'gerente' });
+    if (!gerenteExiste) {
+      await User.updateMany(
+        { $or: [{ email: 'mateusgl@al.insper.edu.br' }, { email: 'mateus@gmail.com' }, { nome: 'Mateus Loureiro' }] },
+        { $set: { role: 'gerente' } }
+      );
+      console.log('Migration: admin promovido a gerente (primeira execucao)');
+    }
 
     app.listen(PORT, () => {
       console.log(`Servidor rodando na porta ${PORT}`);

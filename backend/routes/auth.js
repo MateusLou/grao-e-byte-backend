@@ -11,7 +11,19 @@ const router = express.Router();
 // POST /api/auth/registro (apenas gerentes podem registrar novos funcionarios)
 router.post('/registro', auth, requireGerente, async (req, res) => {
   try {
-    const { nome, email, senha } = req.body;
+    const nome = (req.body.nome || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const senha = req.body.senha || '';
+
+    if (!nome || nome.length < 2) {
+      return res.status(400).json({ erro: 'Nome deve ter pelo menos 2 caracteres' });
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ erro: 'Email invalido' });
+    }
+    if (!senha || senha.length < 6) {
+      return res.status(400).json({ erro: 'Senha deve ter pelo menos 6 caracteres' });
+    }
 
     // Verificar se usuario ja existe
     const usuarioExistente = await User.findOne({ email });
@@ -40,7 +52,12 @@ router.post('/registro', auth, requireGerente, async (req, res) => {
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { email, senha } = req.body;
+    const email = (req.body.email || '').trim().toLowerCase();
+    const senha = req.body.senha || '';
+
+    if (!email || !senha) {
+      return res.status(400).json({ erro: 'Email e senha sao obrigatorios' });
+    }
 
     // Buscar usuario
     const usuario = await User.findOne({ email });
@@ -65,8 +82,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// GET /api/auth/funcionarios - Listar todos os usuarios
-router.get('/funcionarios', auth, async (req, res) => {
+// GET /api/auth/funcionarios - Listar todos os usuarios (apenas gerentes)
+router.get('/funcionarios', auth, requireGerente, async (req, res) => {
   try {
     const funcionarios = await User.find({}, 'nome email role');
     res.json(funcionarios);
@@ -79,7 +96,7 @@ router.get('/funcionarios', auth, async (req, res) => {
 router.delete('/funcionarios/:id', auth, requireGerente, async (req, res) => {
   try {
     // Nao permite deletar a si mesmo
-    if (req.params.id === req.userId) {
+    if (req.params.id === req.userId.toString()) {
       return res.status(400).json({ erro: 'Voce nao pode remover a si mesmo' });
     }
 

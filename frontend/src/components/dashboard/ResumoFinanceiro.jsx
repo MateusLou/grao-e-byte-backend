@@ -11,33 +11,18 @@ function DeltaBadge({ valor }) {
   return <span className={`delta-badge ${cls}`}>{sinal}{valor}%</span>;
 }
 
-function gerarDadosDemo() {
-  const fatHoje = +(Math.random() * 2000 + 500).toFixed(2);
-  const fatOntem = +(Math.random() * 2000 + 400).toFixed(2);
-  const fatSem = +(Math.random() * 2000 + 300).toFixed(2);
-  const pedHoje = Math.floor(Math.random() * 40 + 10);
-  const pedOntem = Math.floor(Math.random() * 40 + 8);
-  return {
-    faturamentoHoje: fatHoje,
-    faturamentoOntem: fatOntem,
-    faturamentoSemPassada: fatSem,
-    pedidosHoje: pedHoje,
-    pedidosOntem: pedOntem,
-    ticketMedio: +(fatHoje / pedHoje).toFixed(2),
-    pedidosSemPassada: Math.floor(Math.random() * 35 + 8)
-  };
-}
-
 function ResumoFinanceiro({ dados }) {
   if (!dados) return null;
 
-  const d = { ...dados };
-  if (!d.faturamentoHoje && !d.faturamentoOntem && !d.faturamentoSemPassada) {
-    Object.assign(d, gerarDadosDemo());
-  } else {
-    if (!d.faturamentoSemPassada) d.faturamentoSemPassada = +(Math.random() * 2000 + 300).toFixed(2);
-    if (!d.faturamentoOntem) d.faturamentoOntem = +(Math.random() * 2000 + 400).toFixed(2);
-  }
+  const d = {
+    faturamentoHoje: dados.faturamentoHoje || 0,
+    faturamentoOntem: dados.faturamentoOntem || 0,
+    faturamentoSemPassada: dados.faturamentoSemPassada || 0,
+    pedidosHoje: dados.pedidosHoje || 0,
+    pedidosOntem: dados.pedidosOntem || 0,
+    ticketMedio: dados.ticketMedio || 0,
+    pedidosSemPassada: dados.pedidosSemPassada || 0
+  };
 
   const deltaFatOntem = calcDelta(d.faturamentoHoje, d.faturamentoOntem);
   const deltaPedOntem = calcDelta(d.pedidosHoje, d.pedidosOntem);
@@ -73,7 +58,7 @@ function ResumoFinanceiro({ dados }) {
         </span>
       </div>
       <div className="resumo-card">
-        <span className="resumo-label">vs Semana Passada</span>
+        <span className="resumo-label">Mesmo dia sem. passada</span>
         <span className="resumo-numero" style={{ color: '#7C3AED' }}>
           R$ {d.faturamentoSemPassada.toFixed(2)}
         </span>

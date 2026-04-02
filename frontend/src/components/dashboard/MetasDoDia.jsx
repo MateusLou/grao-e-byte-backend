@@ -1,9 +1,13 @@
 import { useState } from 'react';
+import { useToast } from '../Toast';
 
 function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
+  const { showToast } = useToast();
   const [editando, setEditando] = useState(null);
   const [formValor, setFormValor] = useState('');
   const [criando, setCriando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [novoForm, setNovoForm] = useState({ tipo: 'diaria', metrica: 'faturamento', valor: '' });
 
   if (!dados) return null;
@@ -16,7 +20,9 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
   const salvarEdicao = async (metaId) => {
     const valor = Number(formValor);
     if (!valor || valor <= 0) return;
+    if (salvando) return;
 
+    setSalvando(true);
     try {
       const meta = dados.find((m) => m._id === metaId);
       await fetch(`/api/metas/${metaId}`, {
@@ -32,23 +38,30 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
       });
       setEditando(null);
       onMetaChanged();
-    } catch { /* silencioso */ }
+    } catch { showToast('Erro ao salvar meta', 'error'); }
+    finally { setSalvando(false); }
   };
 
   const deletarMeta = async (metaId) => {
+    if (salvando) return;
+    setSalvando(true);
     try {
       await fetch(`/api/metas/${metaId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
+      setConfirmDelete(null);
       onMetaChanged();
-    } catch { /* silencioso */ }
+    } catch { showToast('Erro ao remover meta', 'error'); }
+    finally { setSalvando(false); }
   };
 
   const criarMeta = async () => {
     const valor = Number(novoForm.valor);
     if (!valor || valor <= 0) return;
+    if (salvando) return;
 
+    setSalvando(true);
     const agora = new Date();
     let inicioVigencia, fimVigencia;
 
@@ -82,7 +95,8 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
       setCriando(false);
       setNovoForm({ tipo: 'diaria', metrica: 'faturamento', valor: '' });
       onMetaChanged();
-    } catch { /* silencioso */ }
+    } catch { showToast('Erro ao salvar meta', 'error'); }
+    finally { setSalvando(false); }
   };
 
   return (
@@ -115,8 +129,8 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
               onChange={(e) => setNovoForm({ ...novoForm, valor: e.target.value })}
               className="meta-input"
             />
-            <button className="btn-meta-salvar" onClick={criarMeta}>Criar</button>
-            <button className="btn-meta-cancelar" onClick={() => setCriando(false)}>X</button>
+            <button className="btn-meta-salvar" onClick={criarMeta} disabled={salvando}>{salvando ? '...' : 'Criar'}</button>
+            <button className="btn-meta-cancelar" onClick={() => setCriando(false)} disabled={salvando}>X</button>
           </div>
         </div>
       )}
@@ -150,7 +164,7 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                           </svg>
                         </button>
-                        <button className="btn-meta-delete" onClick={() => deletarMeta(meta._id)} title="Remover meta">
+                        <button className="btn-meta-delete" onClick={() => setConfirmDelete(meta._id)} title="Remover meta" disabled={salvando}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                           </svg>
@@ -170,8 +184,8 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
                       className="meta-input"
                       autoFocus
                     />
-                    <button className="btn-meta-salvar" onClick={() => salvarEdicao(meta._id)}>OK</button>
-                    <button className="btn-meta-cancelar" onClick={() => setEditando(null)}>X</button>
+                    <button className="btn-meta-salvar" onClick={() => salvarEdicao(meta._id)} disabled={salvando}>{salvando ? '...' : 'OK'}</button>
+                    <button className="btn-meta-cancelar" onClick={() => setEditando(null)} disabled={salvando}>X</button>
                   </div>
                 ) : (
                   <>
@@ -184,6 +198,14 @@ function MetasDoDia({ dados, isGerente, token, onMetaChanged }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="meta-confirm-delete">
+          <span>Remover esta meta?</span>
+          <button className="btn-meta-salvar" onClick={() => deletarMeta(confirmDelete)} disabled={salvando}>{salvando ? '...' : 'Sim'}</button>
+          <button className="btn-meta-cancelar" onClick={() => setConfirmDelete(null)} disabled={salvando}>Nao</button>
         </div>
       )}
     </div>
