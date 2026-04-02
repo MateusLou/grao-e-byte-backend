@@ -290,7 +290,7 @@ function Vendas() {
       <div className="abas">
         <button
           className={`aba ${abaAtiva === 'nova-venda' ? 'aba-ativa' : ''}`}
-          onClick={() => setAbaAtiva('nova-venda')}
+          onClick={() => { setAbaAtiva('nova-venda'); carregarProdutos(); }}
         >
           Nova Venda
           {carrinho.length > 0 && (
@@ -299,7 +299,7 @@ function Vendas() {
         </button>
         <button
           className={`aba ${abaAtiva === 'pedidos' ? 'aba-ativa' : ''}`}
-          onClick={() => setAbaAtiva('pedidos')}
+          onClick={() => { setAbaAtiva('pedidos'); carregarVendas(); }}
         >
           Pedidos Ativos {vendasAtivas.length > 0 && (
             <span className="pdv-badge">{vendasAtivas.length}</span>
@@ -307,7 +307,7 @@ function Vendas() {
         </button>
         <button
           className={`aba ${abaAtiva === 'historico' ? 'aba-ativa' : ''}`}
-          onClick={() => setAbaAtiva('historico')}
+          onClick={() => { setAbaAtiva('historico'); carregarVendas(); }}
         >
           Historico
         </button>
