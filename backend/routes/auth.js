@@ -8,8 +8,8 @@ const { registrarLog } = require('../helpers/logHelper');
 
 const router = express.Router();
 
-// POST /api/auth/registro
-router.post('/registro', async (req, res) => {
+// POST /api/auth/registro (apenas gerentes podem registrar novos funcionarios)
+router.post('/registro', auth, requireGerente, async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
 

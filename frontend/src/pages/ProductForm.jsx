@@ -24,6 +24,7 @@ function ProductForm() {
   const [novaTag, setNovaTag] = useState('');
   const [erro, setErro] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -31,7 +32,7 @@ function ProductForm() {
       return;
     }
 
-    if (!isEdicao && !isGerente) {
+    if (!isGerente) {
       navigate('/products');
       return;
     }
@@ -80,6 +81,7 @@ function ProductForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
+    setSalvando(true);
 
     const produto = {
       nome,
@@ -113,6 +115,8 @@ function ProductForm() {
       navigate('/products');
     } catch {
       showToast('Erro de conexao com o servidor', 'error');
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -261,8 +265,8 @@ function ProductForm() {
           {erro && <p className="erro-mensagem">{erro}</p>}
 
           <div className="form-acoes">
-            <button type="submit" className="btn-primario">
-              {isEdicao ? 'Salvar Alterações' : 'Adicionar Produto'}
+            <button type="submit" className="btn-primario" disabled={salvando}>
+              {salvando ? 'Salvando...' : isEdicao ? 'Salvar Alterações' : 'Adicionar Produto'}
             </button>
             <button
               type="button"

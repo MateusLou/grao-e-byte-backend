@@ -1,3 +1,14 @@
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function sanitizeCSVField(value) {
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
+    return "'" + value;
+  }
+  return value;
+}
+
 export function exportCSV(produtos) {
   const ativos = produtos.filter((p) => p.ativo !== false);
 
@@ -15,11 +26,11 @@ export function exportCSV(produtos) {
 
   Object.entries(porCategoria).sort().forEach(([cat, items]) => {
     items.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((p) => {
-      const descricao = p.descricao.replace(/"/g, '""');
-      const nome = p.nome.replace(/"/g, '""');
-      const tags = (p.tags || []).join('; ');
+      const descricao = sanitizeCSVField(p.descricao).replace(/"/g, '""');
+      const nome = sanitizeCSVField(p.nome).replace(/"/g, '""');
+      const tags = sanitizeCSVField((p.tags || []).join('; ')).replace(/"/g, '""');
       const preco = p.preco.toFixed(2).replace('.', ',');
-      csv += `"${cat}","${nome}","${descricao}","${preco}","${tags}"\n`;
+      csv += `"${sanitizeCSVField(cat)}","${nome}","${descricao}","${preco}","${tags}"\n`;
     });
   });
 
@@ -87,16 +98,16 @@ export function exportPDF(produtos) {
   Object.entries(porCategoria).sort().forEach(([cat, items]) => {
     const color = categoriaColors[cat] || '#4B5563';
     html += `\n  <div class="categoria">
-    <h2 style="border-bottom-color: ${color}; color: ${color}">${cat}</h2>`;
+    <h2 style="border-bottom-color: ${color}; color: ${color}">${escapeHtml(cat)}</h2>`;
 
     items.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((p) => {
       const preco = p.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      const tags = (p.tags || []).map((t) => `<span class="tag">${t}</span>`).join('');
+      const tags = (p.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('');
       html += `
     <div class="item">
       <div class="item-info">
-        <div class="item-nome">${p.nome}</div>
-        <div class="item-desc">${p.descricao}</div>
+        <div class="item-nome">${escapeHtml(p.nome)}</div>
+        <div class="item-desc">${escapeHtml(p.descricao)}</div>
         ${tags ? `<div class="item-tags">${tags}</div>` : ''}
       </div>
       <span class="preco">${preco}</span>
