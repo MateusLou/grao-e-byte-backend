@@ -28,6 +28,7 @@ function Movimentacoes() {
   const [filtroFuncionario, setFiltroFuncionario] = useState('todos');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [ordenacaoMov, setOrdenacaoMov] = useState('recente');
 
   // Logs/Historico state
   const [logs, setLogs] = useState([]);
@@ -37,6 +38,7 @@ function Movimentacoes() {
   const [filtroUsuarioLog, setFiltroUsuarioLog] = useState('todos');
   const [dataInicioLog, setDataInicioLog] = useState('');
   const [dataFimLog, setDataFimLog] = useState('');
+  const [ordenacaoLog, setOrdenacaoLog] = useState('recente');
 
   // Venda detail modal
   const [vendaDetalhe, setVendaDetalhe] = useState(null);
@@ -157,7 +159,22 @@ function Movimentacoes() {
 
       return true;
     });
-  }, [movimentacoes, filtroTipo, filtroCategoria, filtroProduto, filtroFuncionario, dataInicio, dataFim]);
+
+    result.sort((a, b) => {
+      const dateA = new Date(a.data);
+      const dateB = new Date(b.data);
+      switch (ordenacaoMov) {
+        case 'antigo': return dateA - dateB;
+        case 'produto-az': return (a.produtoId?.nome || '').localeCompare(b.produtoId?.nome || '');
+        case 'produto-za': return (b.produtoId?.nome || '').localeCompare(a.produtoId?.nome || '');
+        case 'qtd-asc': return a.quantidade - b.quantidade;
+        case 'qtd-desc': return b.quantidade - a.quantidade;
+        default: return dateB - dateA;
+      }
+    });
+
+    return result;
+  }, [movimentacoes, filtroTipo, filtroCategoria, filtroProduto, filtroFuncionario, dataInicio, dataFim, ordenacaoMov]);
 
   const totalEntradas = movFiltradas
     .filter((m) => m.tipo === 'entrada')
@@ -168,7 +185,7 @@ function Movimentacoes() {
     .reduce((acc, m) => acc + m.quantidade, 0);
 
   const temFiltroAtivo = filtroTipo !== 'todos' || filtroCategoria !== 'todos' ||
-    filtroProduto !== 'todos' || filtroFuncionario !== 'todos' || dataInicio || dataFim;
+    filtroProduto !== 'todos' || filtroFuncionario !== 'todos' || dataInicio || dataFim || ordenacaoMov !== 'recente';
 
   const limparFiltros = () => {
     setFiltroTipo('todos');
@@ -177,6 +194,7 @@ function Movimentacoes() {
     setFiltroFuncionario('todos');
     setDataInicio('');
     setDataFim('');
+    setOrdenacaoMov('recente');
   };
 
   // === LOGS: filtros ===
@@ -201,10 +219,23 @@ function Movimentacoes() {
 
       return true;
     });
-  }, [logs, filtroAcao, filtroEntidade, filtroUsuarioLog]);
+
+    result.sort((a, b) => {
+      const dateA = new Date(a.data);
+      const dateB = new Date(b.data);
+      switch (ordenacaoLog) {
+        case 'antigo': return dateA - dateB;
+        case 'acao-az': return (a.acao || '').localeCompare(b.acao || '');
+        case 'nome-az': return (a.entidadeNome || '').localeCompare(b.entidadeNome || '');
+        default: return dateB - dateA;
+      }
+    });
+
+    return result;
+  }, [logs, filtroAcao, filtroEntidade, filtroUsuarioLog, ordenacaoLog]);
 
   const temFiltroAtivoLogs = filtroAcao !== 'todos' || filtroEntidade !== 'todos' ||
-    filtroUsuarioLog !== 'todos' || dataInicioLog || dataFimLog;
+    filtroUsuarioLog !== 'todos' || dataInicioLog || dataFimLog || ordenacaoLog !== 'recente';
 
   const limparFiltrosLogs = () => {
     setFiltroAcao('todos');
@@ -212,6 +243,7 @@ function Movimentacoes() {
     setFiltroUsuarioLog('todos');
     setDataInicioLog('');
     setDataFimLog('');
+    setOrdenacaoLog('recente');
   };
 
   // Buscar detalhes de uma venda
@@ -355,7 +387,7 @@ function Movimentacoes() {
               </div>
             </div>
 
-            <div className="filtros-grid filtros-grid-2" style={{ marginTop: 14 }}>
+            <div className="filtros-grid filtros-grid-3" style={{ marginTop: 14 }}>
               <div className="filtro-grupo">
                 <label className="filtro-label">Data Início</label>
                 <input
@@ -374,6 +406,22 @@ function Movimentacoes() {
                   value={dataFim}
                   onChange={(e) => setDataFim(e.target.value)}
                 />
+              </div>
+
+              <div className="filtro-grupo">
+                <label className="filtro-label">Ordenar por</label>
+                <select
+                  className="filtro-select"
+                  value={ordenacaoMov}
+                  onChange={(e) => setOrdenacaoMov(e.target.value)}
+                >
+                  <option value="recente">Mais recente</option>
+                  <option value="antigo">Mais antigo</option>
+                  <option value="produto-az">Produto A-Z</option>
+                  <option value="produto-za">Produto Z-A</option>
+                  <option value="qtd-asc">Menor quantidade</option>
+                  <option value="qtd-desc">Maior quantidade</option>
+                </select>
               </div>
             </div>
           </div>
@@ -511,7 +559,7 @@ function Movimentacoes() {
               </div>
             </div>
 
-            <div className="filtros-grid filtros-grid-2" style={{ marginTop: 14 }}>
+            <div className="filtros-grid filtros-grid-3" style={{ marginTop: 14 }}>
               <div className="filtro-grupo">
                 <label className="filtro-label">Data Início</label>
                 <input
@@ -530,6 +578,20 @@ function Movimentacoes() {
                   value={dataFimLog}
                   onChange={(e) => setDataFimLog(e.target.value)}
                 />
+              </div>
+
+              <div className="filtro-grupo">
+                <label className="filtro-label">Ordenar por</label>
+                <select
+                  className="filtro-select"
+                  value={ordenacaoLog}
+                  onChange={(e) => setOrdenacaoLog(e.target.value)}
+                >
+                  <option value="recente">Mais recente</option>
+                  <option value="antigo">Mais antigo</option>
+                  <option value="acao-az">Ação A-Z</option>
+                  <option value="nome-az">Nome A-Z</option>
+                </select>
               </div>
             </div>
           </div>
