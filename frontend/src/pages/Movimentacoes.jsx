@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const CATEGORIAS = ['Graos', 'Insumos', 'Alimentos', 'Descartaveis'];
 
@@ -280,7 +281,7 @@ function Movimentacoes() {
   if (carregando) {
     return (
       <Layout>
-        <p style={{ padding: 24, color: '#999' }}>Carregando...</p>
+        <LoadingSpinner />
       </Layout>
     );
   }
@@ -599,7 +600,7 @@ function Movimentacoes() {
           </div>
 
           {carregandoLogs ? (
-            <p style={{ padding: 24, color: '#999' }}>Carregando...</p>
+            <LoadingSpinner tamanho={32} />
           ) : logsFiltrados.length === 0 ? (
             <div className="empty-state">
               <p>Nenhum registro encontrado.</p>
@@ -681,7 +682,7 @@ function Movimentacoes() {
         <div className="modal-overlay" onClick={() => { if (!carregandoVenda) setVendaDetalhe(null); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
             {carregandoVenda ? (
-              <p style={{ color: '#999', textAlign: 'center', padding: 16 }}>Carregando...</p>
+              <LoadingSpinner tamanho={32} />
             ) : vendaDetalhe && (
               <>
                 <h3 className="modal-titulo">

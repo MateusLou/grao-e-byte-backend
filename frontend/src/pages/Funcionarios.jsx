@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/Toast';
+import { validarNome, validarEmail, validarSenha } from '../helpers/validacao';
 
 function Funcionarios() {
   const [nome, setNome] = useState('');
@@ -12,6 +13,7 @@ function Funcionarios() {
   const [funcionarios, setFuncionarios] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [cadastrando, setCadastrando] = useState(false);
+  const [errosCampo, setErrosCampo] = useState({});
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('userRole');
@@ -69,11 +71,21 @@ function Funcionarios() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (senha !== confirmarSenha) {
-      showToast('As senhas nao coincidem', 'error');
+    const erros = {};
+    const erroNome = validarNome(nome);
+    const erroEmail = validarEmail(email);
+    const erroSenha = validarSenha(senha);
+    if (erroNome) erros.nome = erroNome;
+    if (erroEmail) erros.email = erroEmail;
+    if (erroSenha) erros.senha = erroSenha;
+    if (senha !== confirmarSenha) erros.confirmarSenha = 'As senhas não coincidem';
+
+    if (Object.keys(erros).length > 0) {
+      setErrosCampo(erros);
       return;
     }
 
+    setErrosCampo({});
     setCadastrando(true);
     try {
       const response = await fetch('/api/auth/registro', {
@@ -123,10 +135,11 @@ function Funcionarios() {
               <input
                 type="text"
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
+                onChange={(e) => { setNome(e.target.value); setErrosCampo((prev) => ({ ...prev, nome: '' })); }}
                 placeholder="Ex: Ana Costa"
-                required
+                className={errosCampo.nome ? 'input-erro' : ''}
               />
+              {errosCampo.nome && <span className="campo-erro">{errosCampo.nome}</span>}
             </div>
 
             <div className="form-group">
@@ -134,10 +147,11 @@ function Funcionarios() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setErrosCampo((prev) => ({ ...prev, email: '' })); }}
                 placeholder="ana@graobyte.com"
-                required
+                className={errosCampo.email ? 'input-erro' : ''}
               />
+              {errosCampo.email && <span className="campo-erro">{errosCampo.email}</span>}
             </div>
 
             <div className="form-group">
@@ -145,11 +159,11 @@ function Funcionarios() {
               <input
                 type="password"
                 value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Senha de acesso"
-                required
-                minLength={4}
+                onChange={(e) => { setSenha(e.target.value); setErrosCampo((prev) => ({ ...prev, senha: '' })); }}
+                placeholder="Mínimo 6 caracteres"
+                className={errosCampo.senha ? 'input-erro' : ''}
               />
+              {errosCampo.senha && <span className="campo-erro">{errosCampo.senha}</span>}
             </div>
 
             <div className="form-group">
@@ -157,19 +171,15 @@ function Funcionarios() {
               <input
                 type="password"
                 value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
+                onChange={(e) => { setConfirmarSenha(e.target.value); setErrosCampo((prev) => ({ ...prev, confirmarSenha: '' })); }}
                 placeholder="Repita a senha"
-                required
-                minLength={4}
+                className={errosCampo.confirmarSenha ? 'input-erro' : ''}
               />
-              {confirmarSenha && senha !== confirmarSenha && (
-                <span style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
-                  As senhas nao coincidem
-                </span>
-              )}
+              {errosCampo.confirmarSenha && <span className="campo-erro">{errosCampo.confirmarSenha}</span>}
             </div>
 
             <button type="submit" className="btn-primario" disabled={cadastrando}>
+              {cadastrando && <span className="btn-spinner" />}
               {cadastrando ? 'Cadastrando...' : 'Cadastrar Funcionário'}
             </button>
           </form>

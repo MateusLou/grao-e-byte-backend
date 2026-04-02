@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/Toast';
+import { validarNome, validarPreco } from '../helpers/validacao';
 
 const TAGS_PREDEFINIDAS = ['Vegano', 'Sem Lactose', 'Sem Gluten'];
 
@@ -23,6 +24,7 @@ function ProductForm() {
   const [tagsDisponiveis, setTagsDisponiveis] = useState([]);
   const [novaTag, setNovaTag] = useState('');
   const [erro, setErro] = useState('');
+  const [errosCampo, setErrosCampo] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
@@ -81,6 +83,19 @@ function ProductForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
+
+    const erros = {};
+    const erroNome = validarNome(nome);
+    const erroPreco = validarPreco(preco);
+    if (erroNome) erros.nome = erroNome;
+    if (erroPreco) erros.preco = erroPreco;
+
+    if (Object.keys(erros).length > 0) {
+      setErrosCampo(erros);
+      return;
+    }
+
+    setErrosCampo({});
     setSalvando(true);
 
     const produto = {
@@ -161,10 +176,11 @@ function ProductForm() {
             <input
               type="text"
               value={nome}
-              onChange={(e) => setNome(e.target.value)}
+              onChange={(e) => { setNome(e.target.value); setErrosCampo((prev) => ({ ...prev, nome: '' })); }}
               placeholder="Ex: Café Arábica Premium"
-              required
+              className={errosCampo.nome ? 'input-erro' : ''}
             />
+            {errosCampo.nome && <span className="campo-erro">{errosCampo.nome}</span>}
           </div>
 
           <div className="form-group">
@@ -186,10 +202,11 @@ function ProductForm() {
                 step="0.01"
                 min="0"
                 value={preco}
-                onChange={(e) => setPreco(e.target.value)}
+                onChange={(e) => { setPreco(e.target.value); setErrosCampo((prev) => ({ ...prev, preco: '' })); }}
                 placeholder="Ex: 45.00"
-                required
+                className={errosCampo.preco ? 'input-erro' : ''}
               />
+              {errosCampo.preco && <span className="campo-erro">{errosCampo.preco}</span>}
             </div>
 
             <div className="form-group">
@@ -266,6 +283,7 @@ function ProductForm() {
 
           <div className="form-acoes">
             <button type="submit" className="btn-primario" disabled={salvando}>
+              {salvando && <span className="btn-spinner" />}
               {salvando ? 'Salvando...' : isEdicao ? 'Salvar Alterações' : 'Adicionar Produto'}
             </button>
             <button

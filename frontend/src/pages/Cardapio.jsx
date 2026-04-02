@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const CORES_CATEGORIA = {
   'Graos': '#92400E',
@@ -39,7 +40,7 @@ function Cardapio() {
   if (carregando) {
     return (
       <div className="cardapio-page">
-        <p style={{ textAlign: 'center', color: '#999', padding: 40 }}>Carregando cardápio...</p>
+        <LoadingSpinner texto="Carregando cardápio..." />
       </div>
     );
   }

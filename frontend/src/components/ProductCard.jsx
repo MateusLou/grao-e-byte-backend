@@ -22,12 +22,11 @@ function ProductCard({ produto, onMovimentacao, isGerente, onToggleAtivo, isPior
   });
 
   const handleConfirmar = () => {
-    const qtd = Number(quantidade);
-    if (qtd > 0) {
-      onMovimentacao(produto._id, movTipo, qtd);
-      setMovTipo(null);
-      setQuantidade('');
-    }
+    const qtd = parseInt(quantidade, 10);
+    if (!Number.isInteger(qtd) || qtd < 1) return;
+    onMovimentacao(produto._id, movTipo, qtd);
+    setMovTipo(null);
+    setQuantidade('');
   };
 
   const handleCancelar = () => {
@@ -137,6 +136,7 @@ function ProductCard({ produto, onMovimentacao, isGerente, onToggleAtivo, isPior
                       <input
                         type="number"
                         min="1"
+                        step="1"
                         value={quantidade}
                         onChange={(e) => setQuantidade(e.target.value)}
                         placeholder="Qtd"

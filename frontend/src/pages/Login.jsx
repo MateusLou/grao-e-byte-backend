@@ -1,15 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { validarEmail } from '../helpers/validacao';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const [errosCampo, setErrosCampo] = useState({});
+  const [enviando, setEnviando] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
+
+    const erros = {};
+    const erroEmail = validarEmail(email);
+    if (erroEmail) erros.email = erroEmail;
+    if (!senha) erros.senha = 'Senha é obrigatória';
+
+    if (Object.keys(erros).length > 0) {
+      setErrosCampo(erros);
+      return;
+    }
+
+    setErrosCampo({});
+    setEnviando(true);
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -31,6 +47,8 @@ function Login() {
       navigate('/dashboard');
     } catch {
       setErro('Erro de conexao com o servidor');
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -46,10 +64,11 @@ function Login() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setErrosCampo((prev) => ({ ...prev, email: '' })); }}
               placeholder="seu@email.com"
-              required
+              className={errosCampo.email ? 'input-erro' : ''}
             />
+            {errosCampo.email && <span className="campo-erro">{errosCampo.email}</span>}
           </div>
 
           <div className="form-group">
@@ -57,16 +76,18 @@ function Login() {
             <input
               type="password"
               value={senha}
-              onChange={(e) => setSenha(e.target.value)}
+              onChange={(e) => { setSenha(e.target.value); setErrosCampo((prev) => ({ ...prev, senha: '' })); }}
               placeholder="Sua senha"
-              required
+              className={errosCampo.senha ? 'input-erro' : ''}
             />
+            {errosCampo.senha && <span className="campo-erro">{errosCampo.senha}</span>}
           </div>
 
           {erro && <p className="erro-mensagem">{erro}</p>}
 
-          <button type="submit" className="btn-primario">
-            Entrar
+          <button type="submit" className="btn-primario" disabled={enviando}>
+            {enviando && <span className="btn-spinner" />}
+            {enviando ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
       </div>

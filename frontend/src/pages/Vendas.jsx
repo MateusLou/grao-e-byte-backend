@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import LoadingSpinner from '../components/LoadingSpinner';
 import ProductCard from '../components/ProductCard';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/Toast';
@@ -272,7 +273,7 @@ function Vendas() {
   if (carregando) {
     return (
       <Layout>
-        <p style={{ padding: 24, color: '#999' }}>Carregando...</p>
+        <LoadingSpinner />
       </Layout>
     );
   }
@@ -474,6 +475,7 @@ function Vendas() {
                     onClick={finalizarVenda}
                     disabled={enviando}
                   >
+                    {enviando && <span className="btn-spinner" />}
                     {enviando ? 'Registrando...' : 'Registrar Venda'}
                   </button>
                   <button

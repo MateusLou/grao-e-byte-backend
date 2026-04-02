@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 function AlertasEstoque() {
   const [produtos, setProdutos] = useState([]);
@@ -78,7 +79,7 @@ function AlertasEstoque() {
   if (carregando) {
     return (
       <Layout>
-        <p style={{ padding: 24, color: '#999' }}>Carregando...</p>
+        <LoadingSpinner />
       </Layout>
     );
   }

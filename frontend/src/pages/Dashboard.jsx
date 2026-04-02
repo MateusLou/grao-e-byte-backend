@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import LoadingSpinner from '../components/LoadingSpinner';
 import ResumoFinanceiro from '../components/dashboard/ResumoFinanceiro';
 
 import EstoqueCritico from '../components/dashboard/EstoqueCritico';
@@ -8,10 +9,12 @@ import MetasDoDia from '../components/dashboard/MetasDoDia';
 import TopVendidos from '../components/dashboard/TopVendidos';
 import GraficoPorHora from '../components/dashboard/GraficoPorHora';
 import UltimasVendas from '../components/dashboard/UltimasVendas';
+import QRCodeCardapio from '../components/QRCodeCardapio';
 
 function Dashboard() {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [mostrarQR, setMostrarQR] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const isGerente = localStorage.getItem('userRole') === 'gerente';
@@ -49,7 +52,7 @@ function Dashboard() {
   if (carregando) {
     return (
       <Layout>
-        <p style={{ padding: 24, color: '#999' }}>Carregando...</p>
+        <LoadingSpinner />
       </Layout>
     );
   }
@@ -69,6 +72,15 @@ function Dashboard() {
           <h2 className="page-titulo">Dashboard</h2>
           <p className="page-subtitulo">Visão geral do dia</p>
         </div>
+        {isGerente && (
+          <button
+            className="btn-cancelar"
+            onClick={() => setMostrarQR(true)}
+            style={{ width: 'auto', minHeight: 40 }}
+          >
+            QR Code Cardápio
+          </button>
+        )}
       </div>
 
       {/* Linha 1: Resumo financeiro */}
@@ -90,6 +102,8 @@ function Dashboard() {
       <div style={{ marginTop: 20 }}>
         <UltimasVendas dados={dados.ultimasVendas} />
       </div>
+
+      <QRCodeCardapio isOpen={mostrarQR} onClose={() => setMostrarQR(false)} />
     </Layout>
   );
 }
