@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { temPermissao } from '../helpers/permissoes';
 
 function Layout({ children }) {
   const navigate = useNavigate();
@@ -9,8 +10,14 @@ function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alertaCount, setAlertaCount] = useState(0);
 
+  const temAlgumaPermissaoGerencia = isGerente
+    || temPermissao('dashboard')
+    || temPermissao('novo_produto')
+    || temPermissao('movimentacoes')
+    || temPermissao('alertas');
+
   useEffect(() => {
-    if (!isGerente) return;
+    if (!temPermissao('alertas')) return;
     const token = localStorage.getItem('token');
     if (!token) return;
     fetch('/api/products', { headers: { Authorization: `Bearer ${token}` } })
@@ -26,6 +33,7 @@ function Layout({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('nomeUsuario');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('abasPermitidas');
     navigate('/login');
   };
 
@@ -63,19 +71,6 @@ function Layout({ children }) {
           <span className="sidebar-section-label">Menu</span>
 
           <button
-            className={`sidebar-link ${isActive('/dashboard') ? 'sidebar-link-ativo' : ''}`}
-            onClick={() => navTo('/dashboard')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-            Dashboard
-          </button>
-
-          <button
             className={`sidebar-link ${isActive('/products') ? 'sidebar-link-ativo' : ''}`}
             onClick={() => navTo('/products')}
           >
@@ -97,64 +92,85 @@ function Layout({ children }) {
             Vendas
           </button>
 
-          {isGerente && (
-            <button
-              className={`sidebar-link ${isActive('/products/novo') ? 'sidebar-link-ativo' : ''}`}
-              onClick={() => navTo('/products/novo')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" />
-              </svg>
-              Novo Produto
-            </button>
-          )}
-
-          {isGerente && (
+          {temAlgumaPermissaoGerencia && (
             <>
               <span className="sidebar-section-label">Gerencia</span>
 
-              <button
-                className={`sidebar-link ${isActive('/movimentacoes') ? 'sidebar-link-ativo' : ''}`}
-                onClick={() => navTo('/movimentacoes')}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                  <line x1="9" y1="12" x2="15" y2="12" />
-                  <line x1="9" y1="16" x2="15" y2="16" />
-                </svg>
-                Movimentacoes
-              </button>
+              {temPermissao('dashboard') && (
+                <button
+                  className={`sidebar-link ${isActive('/dashboard') ? 'sidebar-link-ativo' : ''}`}
+                  onClick={() => navTo('/dashboard')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                  Dashboard
+                </button>
+              )}
 
-              <button
-                className={`sidebar-link ${isActive('/alertas') ? 'sidebar-link-ativo' : ''}`}
-                onClick={() => navTo('/alertas')}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                Alertas
-                {alertaCount > 0 && (
-                  <span className="sidebar-badge">{alertaCount}</span>
-                )}
-              </button>
+              {temPermissao('novo_produto') && (
+                <button
+                  className={`sidebar-link ${isActive('/products/novo') ? 'sidebar-link-ativo' : ''}`}
+                  onClick={() => navTo('/products/novo')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                  Novo Produto
+                </button>
+              )}
 
-              <button
-                className={`sidebar-link ${isActive('/funcionarios') ? 'sidebar-link-ativo' : ''}`}
-                onClick={() => navTo('/funcionarios')}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                Equipe
-              </button>
+              {temPermissao('movimentacoes') && (
+                <button
+                  className={`sidebar-link ${isActive('/movimentacoes') ? 'sidebar-link-ativo' : ''}`}
+                  onClick={() => navTo('/movimentacoes')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                    <line x1="9" y1="12" x2="15" y2="12" />
+                    <line x1="9" y1="16" x2="15" y2="16" />
+                  </svg>
+                  Movimentacoes
+                </button>
+              )}
+
+              {temPermissao('alertas') && (
+                <button
+                  className={`sidebar-link ${isActive('/alertas') ? 'sidebar-link-ativo' : ''}`}
+                  onClick={() => navTo('/alertas')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  Alertas
+                  {alertaCount > 0 && (
+                    <span className="sidebar-badge">{alertaCount}</span>
+                  )}
+                </button>
+              )}
+
+              {isGerente && (
+                <button
+                  className={`sidebar-link ${isActive('/funcionarios') ? 'sidebar-link-ativo' : ''}`}
+                  onClick={() => navTo('/funcionarios')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  Equipe
+                </button>
+              )}
             </>
           )}
         </nav>

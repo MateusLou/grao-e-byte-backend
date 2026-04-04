@@ -20,6 +20,23 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, requireGerente, async (req, res) => {
   try {
     const { tipo, metrica, valor, inicioVigencia, fimVigencia } = req.body;
+    if (!['diaria', 'semanal'].includes(tipo)) {
+      return res.status(400).json({ erro: 'Tipo deve ser "diaria" ou "semanal"' });
+    }
+    if (!['faturamento', 'pedidos'].includes(metrica)) {
+      return res.status(400).json({ erro: 'Metrica deve ser "faturamento" ou "pedidos"' });
+    }
+    if (typeof valor !== 'number' || valor <= 0 || !isFinite(valor)) {
+      return res.status(400).json({ erro: 'Valor deve ser um numero positivo' });
+    }
+    const inicio = new Date(inicioVigencia);
+    const fim = new Date(fimVigencia);
+    if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) {
+      return res.status(400).json({ erro: 'Datas invalidas' });
+    }
+    if (inicio >= fim) {
+      return res.status(400).json({ erro: 'Data de inicio deve ser anterior a data de fim' });
+    }
     const meta = await Meta.create({
       tipo,
       metrica,

@@ -61,7 +61,7 @@ frontend/
 ### Login (`/login`)
 - Formulario de email/senha com validacao
 - Armazenamento de JWT no localStorage
-- Redirect automatico para dashboard apos login
+- Redirect automatico apos login (gerente → dashboard, funcionario → produtos)
 - Tratamento de erro para credenciais invalidas
 
 ### Dashboard (`/dashboard`)
@@ -130,19 +130,22 @@ Tres abas de navegacao:
 
 | Recurso | Gerente | Funcionario |
 |---------|---------|-------------|
-| Dashboard | Completo + QR Code | Completo |
+| Dashboard | Completo + QR Code | Sem acesso |
 | Produtos | CRUD completo + exportacao | Somente visualizacao |
 | Vendas | Todas as acoes | Todas as acoes |
+| Novo Produto | Acesso total | Sem acesso |
 | Movimentacoes | Acesso total | Sem acesso |
 | Alertas | Acesso total | Sem acesso |
 | Funcionarios | CRUD | Sem acesso |
-| Metas | CRUD no dashboard | Somente visualizacao |
+| Metas | CRUD no dashboard | Sem acesso |
 | Cardapio | Acesso publico | Acesso publico |
 
 ## Componentes Compartilhados
 
 ### Layout
 - Sidebar fixa com navegacao, logo, avatar do usuario, botao de logout
+- Secao "Menu" (todos): Produtos, Vendas
+- Secao "Gerencia" (apenas gerente): Dashboard, Novo Produto, Movimentacoes, Alertas, Equipe
 - Hamburger menu em mobile com overlay
 - Badge de alerta na sidebar (contagem de estoque critico)
 - Highlight da pagina ativa
@@ -231,6 +234,37 @@ Authorization: Bearer <token>
 ```
 
 Se uma requisicao retorna `401`, o token e removido e o usuario e redirecionado para `/login`.
+
+## Deploy em Producao
+
+O frontend e buildado e servido pelo backend em producao (deploy unificado no Render). Isso significa que:
+
+- Nao e necessario hospedar o frontend separadamente
+- Todas as chamadas `/api/*` funcionam na mesma origem (sem CORS)
+- O QR Code do cardapio gera automaticamente a URL publica correta
+
+### Como funciona
+
+1. O script `render-build.sh` no repositorio do backend clona este repositorio, executa `npm run build`, e copia a pasta `dist/` para o backend.
+2. O Express serve os arquivos estaticos e redireciona rotas de pagina para `index.html` (SPA).
+3. Para desenvolvimento local, o Vite proxy redireciona `/api/*` para `localhost:3001`.
+
+### Build para producao
+
+```bash
+npm run build
+```
+
+Gera a pasta `dist/` com os arquivos otimizados para producao.
+
+### QR Code e Cardapio Publico
+
+O cardapio (`/cardapio`) e a unica rota publica da aplicacao. O QR Code e gerado dinamicamente usando `window.location.origin`, garantindo que:
+
+- Em **desenvolvimento**: aponta para `localhost:5173/cardapio`
+- Em **producao**: aponta para `https://seu-app.onrender.com/cardapio`
+
+O cardapio exibe apenas produtos **ativos** com **estoque disponivel** (calculado dinamicamente a partir das movimentacoes).
 
 ## Equipe
 

@@ -44,7 +44,8 @@ function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('nomeUsuario', data.nome);
       localStorage.setItem('userRole', data.role);
-      navigate('/dashboard');
+      localStorage.setItem('abasPermitidas', JSON.stringify(data.abasPermitidas || []));
+      navigate(data.role === 'gerente' ? '/dashboard' : '/products');
     } catch {
       setErro('Erro de conexao com o servidor');
     } finally {

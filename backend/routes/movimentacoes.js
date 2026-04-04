@@ -2,13 +2,13 @@ const express = require('express');
 const Movimentacao = require('../models/Movimentacao');
 const Product = require('../models/Product');
 const auth = require('../middleware/auth');
-const requireGerente = require('../middleware/requireGerente');
+const requirePermissao = require('../middleware/requirePermissao');
 const { registrarLog } = require('../helpers/logHelper');
 
 const router = express.Router();
 
 // POST /api/movimentacoes - Registrar entrada ou saida
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requirePermissao('movimentacoes'), async (req, res) => {
   try {
     const { produtoId, tipo, quantidade } = req.body;
 
@@ -21,8 +21,8 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ erro: 'Tipo deve ser "entrada" ou "saida"' });
     }
 
-    if (!quantidade || quantidade < 1) {
-      return res.status(400).json({ erro: 'Quantidade deve ser pelo menos 1' });
+    if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > 999999) {
+      return res.status(400).json({ erro: 'Quantidade deve ser um inteiro entre 1 e 999999' });
     }
 
     // Validar estoque antes de permitir saida
@@ -55,7 +55,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // GET /api/movimentacoes - Todas as movimentacoes (painel gerente)
-router.get('/', auth, requireGerente, async (req, res) => {
+router.get('/', auth, requirePermissao('movimentacoes'), async (req, res) => {
   try {
     const movimentacoes = await Movimentacao.find()
       .populate('produtoId', 'nome categoria')

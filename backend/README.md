@@ -158,7 +158,7 @@ backend/
 
 | Metodo | Rota | Auth | Role | Descricao |
 |--------|------|------|------|-----------|
-| GET | `/` | JWT | Todos | Dados agregados: faturamento, pedidos, estoque critico, metas, top vendidos, grafico por hora, ultimas vendas |
+| GET | `/` | JWT | Gerente | Dados agregados: faturamento, pedidos, estoque critico, metas, top vendidos, grafico por hora, ultimas vendas |
 
 ### Metas (`/api/metas`)
 
@@ -254,6 +254,55 @@ npm run seed:clear
 ```
 
 O servidor inicia na porta configurada (default: `3001`).
+
+## Deploy em Producao (Render)
+
+O backend serve tanto a API quanto o frontend em producao, formando um deploy unificado. Isso garante que o QR Code do cardapio funcione corretamente em dispositivos moveis, pois a URL gerada aponta para o dominio publico do Render.
+
+### Como funciona
+
+1. O script `render-build.sh` instala as dependencias do backend, clona e builda o frontend, e copia os arquivos estaticos para a pasta `public/`.
+2. Em producao (`NODE_ENV=production`), o Express serve os arquivos estaticos do frontend e redireciona rotas nao-API para `index.html` (SPA catch-all).
+3. Todas as chamadas `/api/*` continuam funcionando normalmente pois estao na mesma origem.
+
+### Configuracao no Render
+
+1. Crie um **Web Service** no [Render](https://render.com)
+2. Conecte o repositorio `grao-e-byte-backend`
+3. Configure:
+
+| Campo | Valor |
+|-------|-------|
+| **Build Command** | `chmod +x render-build.sh && bash render-build.sh` |
+| **Start Command** | `node server.js` |
+| **Environment** | Node |
+
+4. Adicione as variaveis de ambiente:
+
+| Variavel | Valor | Descricao |
+|----------|-------|-----------|
+| `MONGO_URI` | `mongodb+srv://...` | String de conexao do MongoDB Atlas |
+| `JWT_SECRET` | (chave secreta) | Chave para assinar tokens JWT |
+| `NODE_ENV` | `production` | Ativa serving de arquivos estaticos |
+
+5. Clique em **Create Web Service** e aguarde o deploy.
+
+### QR Code do Cardapio
+
+Apos o deploy, o QR Code gerado no Dashboard aponta automaticamente para `https://seu-app.onrender.com/cardapio`. Clientes podem escanear com o celular para acessar o cardapio publico — sem necessidade de login.
+
+O cardapio exibe apenas produtos que estao **ativos** (`ativo: true`) e possuem **estoque disponivel** (`estoque > 0`).
+
+### Arquitetura de Deploy
+
+```
+Render Web Service
+  render-build.sh          # Clona frontend, builda, copia para public/
+  server.js                # Express: API + arquivos estaticos + SPA catch-all
+  public/                  # Build do frontend (gerado no deploy, nao commitado)
+    index.html
+    assets/
+```
 
 ## Equipe
 

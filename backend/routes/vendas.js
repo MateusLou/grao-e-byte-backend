@@ -4,6 +4,7 @@ const Venda = require('../models/Venda');
 const Product = require('../models/Product');
 const Movimentacao = require('../models/Movimentacao');
 const auth = require('../middleware/auth');
+const requireGerente = require('../middleware/requireGerente');
 const { registrarLog } = require('../helpers/logHelper');
 
 const router = express.Router();
@@ -148,34 +149,48 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// PATCH /api/vendas/:id/status - Atualizar status
+// PATCH /api/vendas/:id/status - Atualizar status (somente gerente pode cancelar)
 router.patch('/:id/status', auth, async (req, res) => {
-  try {
-    const { status } = req.body;
-    const venda = await Venda.findById(req.params.id);
-    if (!venda) {
-      return res.status(404).json({ erro: 'Venda nao encontrada' });
-    }
+  const { status } = req.body;
 
-    if (venda.status === 'finalizado' || venda.status === 'cancelado') {
-      return res.status(400).json({ erro: 'Venda ja finalizada ou cancelada' });
-    }
+  if (!['em_andamento', 'pronto', 'finalizado', 'cancelado'].includes(status)) {
+    return res.status(400).json({ erro: 'Status invalido' });
+  }
 
-    if (!['em_andamento', 'pronto', 'finalizado', 'cancelado'].includes(status)) {
-      return res.status(400).json({ erro: 'Status invalido' });
-    }
+  // Cancelamento requer transacao para garantir consistencia do estoque
+  if (status === 'cancelado') {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const venda = await Venda.findById(req.params.id).session(session);
+      if (!venda) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ erro: 'Venda nao encontrada' });
+      }
+      if (venda.status === 'finalizado' || venda.status === 'cancelado') {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ erro: 'Venda ja finalizada ou cancelada' });
+      }
 
-    // Se cancelar, criar movimentacoes de entrada compensatorias
-    if (status === 'cancelado') {
+      // Criar movimentacoes compensatorias dentro da transacao
       for (const item of venda.itens) {
-        await Movimentacao.create({
+        await Movimentacao.create([{
           produtoId: item.produtoId,
           tipo: 'entrada',
           origem: 'cancelamento',
           quantidade: item.quantidade,
           userId: req.userId
-        });
+        }], { session });
       }
+
+      venda.status = 'cancelado';
+      await venda.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
       registrarLog({
         acao: 'cancelar_venda',
         entidade: 'venda',
@@ -184,6 +199,24 @@ router.patch('/:id/status', auth, async (req, res) => {
         userId: req.userId,
         detalhes: `Estoque restaurado`
       });
+
+      return res.json(venda);
+    } catch (erro) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(500).json({ erro: 'Erro ao cancelar venda' });
+    }
+  }
+
+  // Demais mudancas de status (pronto, finalizado)
+  try {
+    const venda = await Venda.findById(req.params.id);
+    if (!venda) {
+      return res.status(404).json({ erro: 'Venda nao encontrada' });
+    }
+
+    if (venda.status === 'finalizado' || venda.status === 'cancelado') {
+      return res.status(400).json({ erro: 'Venda ja finalizada ou cancelada' });
     }
 
     venda.status = status;

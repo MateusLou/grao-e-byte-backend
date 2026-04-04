@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -16,7 +17,11 @@ const app = express();
 
 // Middlewares
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true
 }));
 app.use(express.json());
@@ -31,10 +36,18 @@ app.use('/api/vendas', vendasRoutes);
 app.use('/api/metas', metasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Rota de teste
-app.get('/', (req, res) => {
+// Rota de teste da API
+app.get('/api/status', (req, res) => {
   res.json({ mensagem: 'API Grao & Byte funcionando!' });
 });
+
+// Servir frontend em producao
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'public')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+}
 
 // Conexao com MongoDB e inicio do servidor
 const PORT = process.env.PORT || 5000;
@@ -46,9 +59,9 @@ mongoose.connect(process.env.MONGO_URI)
     // Migration one-time: garantir que o admin tenha role gerente (so roda se nenhum gerente existir)
     const User = require('./models/User');
     const gerenteExiste = await User.findOne({ role: 'gerente' });
-    if (!gerenteExiste) {
+    if (!gerenteExiste && process.env.ADMIN_EMAIL) {
       await User.updateMany(
-        { $or: [{ email: 'mateusgl@al.insper.edu.br' }, { email: 'mateus@gmail.com' }, { nome: 'Mateus Loureiro' }] },
+        { email: process.env.ADMIN_EMAIL },
         { $set: { role: 'gerente' } }
       );
       console.log('Migration: admin promovido a gerente (primeira execucao)');

@@ -5,6 +5,13 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/Toast';
 import { validarNome, validarEmail, validarSenha } from '../helpers/validacao';
 
+const ABAS_DISPONIVEIS = [
+  { chave: 'dashboard', label: 'Dashboard' },
+  { chave: 'novo_produto', label: 'Novo Produto' },
+  { chave: 'movimentacoes', label: 'Movimentacoes' },
+  { chave: 'alertas', label: 'Alertas' }
+];
+
 function Funcionarios() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -14,6 +21,9 @@ function Funcionarios() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [cadastrando, setCadastrando] = useState(false);
   const [errosCampo, setErrosCampo] = useState({});
+  const [permissaoAberta, setPermissaoAberta] = useState(null);
+  const [permissaoEditando, setPermissaoEditando] = useState([]);
+  const [salvandoPermissao, setSalvandoPermissao] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('userRole');
@@ -78,7 +88,7 @@ function Funcionarios() {
     if (erroNome) erros.nome = erroNome;
     if (erroEmail) erros.email = erroEmail;
     if (erroSenha) erros.senha = erroSenha;
-    if (senha !== confirmarSenha) erros.confirmarSenha = 'As senhas não coincidem';
+    if (senha !== confirmarSenha) erros.confirmarSenha = 'As senhas nao coincidem';
 
     if (Object.keys(erros).length > 0) {
       setErrosCampo(erros);
@@ -117,18 +127,60 @@ function Funcionarios() {
     }
   };
 
+  const abrirPermissoes = (func) => {
+    if (permissaoAberta === func._id) {
+      setPermissaoAberta(null);
+      return;
+    }
+    setPermissaoAberta(func._id);
+    setPermissaoEditando([...(func.abasPermitidas || [])]);
+  };
+
+  const togglePermissao = (chave) => {
+    setPermissaoEditando(prev =>
+      prev.includes(chave) ? prev.filter(a => a !== chave) : [...prev, chave]
+    );
+  };
+
+  const salvarPermissoes = async (funcId) => {
+    setSalvandoPermissao(true);
+    try {
+      const response = await fetch(`/api/auth/funcionarios/${funcId}/permissoes`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ abasPermitidas: permissaoEditando })
+      });
+
+      if (response.ok) {
+        showToast('Permissoes atualizadas!', 'success');
+        setPermissaoAberta(null);
+        carregarFuncionarios();
+      } else {
+        const data = await response.json();
+        showToast(data.erro || 'Erro ao atualizar permissoes', 'error');
+      }
+    } catch {
+      showToast('Erro de conexao com o servidor', 'error');
+    } finally {
+      setSalvandoPermissao(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="page-header">
         <div>
-          <h2 className="page-titulo">Funcionários</h2>
-          <p className="page-subtitulo">Cadastre novos membros da equipe</p>
+          <h2 className="page-titulo">Funcionarios</h2>
+          <p className="page-subtitulo">Cadastre novos membros da equipe e gerencie permissoes</p>
         </div>
       </div>
 
       <div className="func-layout">
         <div className="form-container">
-          <h3 className="form-section-titulo">Novo Funcionário</h3>
+          <h3 className="form-section-titulo">Novo Funcionario</h3>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Nome Completo</label>
@@ -160,7 +212,7 @@ function Funcionarios() {
                 type="password"
                 value={senha}
                 onChange={(e) => { setSenha(e.target.value); setErrosCampo((prev) => ({ ...prev, senha: '' })); }}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Minimo 6 caracteres"
                 className={errosCampo.senha ? 'input-erro' : ''}
               />
               {errosCampo.senha && <span className="campo-erro">{errosCampo.senha}</span>}
@@ -180,7 +232,7 @@ function Funcionarios() {
 
             <button type="submit" className="btn-primario" disabled={cadastrando}>
               {cadastrando && <span className="btn-spinner" />}
-              {cadastrando ? 'Cadastrando...' : 'Cadastrar Funcionário'}
+              {cadastrando ? 'Cadastrando...' : 'Cadastrar Funcionario'}
             </button>
           </form>
         </div>
@@ -188,29 +240,88 @@ function Funcionarios() {
         <div className="func-lista-container">
           <h3 className="form-section-titulo">Equipe Atual</h3>
           {funcionarios.length === 0 ? (
-            <p style={{ color: '#999', fontSize: '0.85rem' }}>Nenhum funcionário cadastrado.</p>
+            <p style={{ color: '#999', fontSize: '0.85rem' }}>Nenhum funcionario cadastrado.</p>
           ) : (
             <div className="func-lista">
               {funcionarios.map((func) => (
-                <div key={func._id} className="func-item">
-                  <div className="tabela-avatar">
-                    {func.nome.charAt(0).toUpperCase()}
+                <div key={func._id} className="func-item-wrapper">
+                  <div className="func-item">
+                    <div className="tabela-avatar">
+                      {func.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="func-item-info">
+                      <span className="tabela-nome">{func.nome}</span>
+                      <span className="tabela-email">{func.email}</span>
+                      {func.role !== 'gerente' && func.abasPermitidas && func.abasPermitidas.length > 0 && (
+                        <div className="func-permissoes-badges">
+                          {func.abasPermitidas.map(aba => {
+                            const info = ABAS_DISPONIVEIS.find(a => a.chave === aba);
+                            return info ? (
+                              <span key={aba} className="permissao-badge">{info.label}</span>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <div className="func-item-acoes">
+                      {func.role !== 'gerente' && (
+                        <button
+                          className={`func-btn-permissao ${permissaoAberta === func._id ? 'func-btn-permissao-ativo' : ''}`}
+                          onClick={() => abrirPermissoes(func)}
+                          title="Gerenciar permissoes"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                          </svg>
+                        </button>
+                      )}
+                      {func.role !== 'gerente' && (
+                        <button
+                          className="func-btn-deletar"
+                          onClick={() => setDeleteTarget({ id: func._id, nome: func.nome })}
+                          title="Remover funcionario"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="func-item-info">
-                    <span className="tabela-nome">{func.nome}</span>
-                    <span className="tabela-email">{func.email}</span>
-                  </div>
-                  {func.role !== 'gerente' && (
-                    <button
-                      className="func-btn-deletar"
-                      onClick={() => setDeleteTarget({ id: func._id, nome: func.nome })}
-                      title="Remover funcionário"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
+
+                  {permissaoAberta === func._id && (
+                    <div className="permissao-painel">
+                      <span className="permissao-painel-titulo">Abas de Gerencia</span>
+                      <div className="permissao-toggles">
+                        {ABAS_DISPONIVEIS.map(aba => (
+                          <button
+                            key={aba.chave}
+                            className={`permissao-toggle ${permissaoEditando.includes(aba.chave) ? 'permissao-toggle-ativo' : ''}`}
+                            onClick={() => togglePermissao(aba.chave)}
+                            type="button"
+                          >
+                            {aba.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="permissao-acoes">
+                        <button
+                          className="btn-permissao-salvar"
+                          onClick={() => salvarPermissoes(func._id)}
+                          disabled={salvandoPermissao}
+                        >
+                          {salvandoPermissao ? 'Salvando...' : 'Salvar'}
+                        </button>
+                        <button
+                          className="btn-permissao-cancelar"
+                          onClick={() => setPermissaoAberta(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
@@ -221,7 +332,7 @@ function Funcionarios() {
 
       <ConfirmModal
         isOpen={!!deleteTarget}
-        title="Remover Funcionário"
+        title="Remover Funcionario"
         message={deleteTarget ? `Tem certeza que deseja remover "${deleteTarget.nome}"?` : ''}
         confirmLabel="Remover"
         onConfirm={handleDeletar}

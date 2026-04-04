@@ -2,7 +2,7 @@ const express = require('express');
 const Product = require('../models/Product');
 const Movimentacao = require('../models/Movimentacao');
 const auth = require('../middleware/auth');
-const requireGerente = require('../middleware/requireGerente');
+const requirePermissao = require('../middleware/requirePermissao');
 const { registrarLog } = require('../helpers/logHelper');
 
 const router = express.Router();
@@ -36,7 +36,7 @@ router.get('/tags', auth, async (req, res) => {
 });
 
 // PUT /api/products/reorder - Reordenar produtos
-router.put('/reorder', auth, requireGerente, async (req, res) => {
+router.put('/reorder', auth, requirePermissao('novo_produto'), async (req, res) => {
   try {
     const { items } = req.body;
     if (!items || !Array.isArray(items)) {
@@ -120,9 +120,18 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/products - Criar novo produto
-router.post('/', auth, requireGerente, async (req, res) => {
+router.post('/', auth, requirePermissao('novo_produto'), async (req, res) => {
   try {
     const { nome, descricao, preco, categoria, tags } = req.body;
+    if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
+      return res.status(400).json({ erro: 'Nome eh obrigatorio' });
+    }
+    if (!descricao || typeof descricao !== 'string' || descricao.trim().length === 0) {
+      return res.status(400).json({ erro: 'Descricao eh obrigatoria' });
+    }
+    if (typeof preco !== 'number' || preco <= 0 || !isFinite(preco)) {
+      return res.status(400).json({ erro: 'Preco deve ser um numero positivo' });
+    }
     const produto = await Product.create({ nome, descricao, preco, categoria, tags: tags || [] });
     registrarLog({ acao: 'criar', entidade: 'produto', entidadeId: produto._id, entidadeNome: produto.nome, userId: req.userId, detalhes: `Categoria: ${categoria}` });
     res.status(201).json(produto);
@@ -132,9 +141,18 @@ router.post('/', auth, requireGerente, async (req, res) => {
 });
 
 // PUT /api/products/:id - Atualizar produto
-router.put('/:id', auth, requireGerente, async (req, res) => {
+router.put('/:id', auth, requirePermissao('novo_produto'), async (req, res) => {
   try {
     const { nome, descricao, preco, categoria, ativo, tags } = req.body;
+    if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
+      return res.status(400).json({ erro: 'Nome eh obrigatorio' });
+    }
+    if (!descricao || typeof descricao !== 'string' || descricao.trim().length === 0) {
+      return res.status(400).json({ erro: 'Descricao eh obrigatoria' });
+    }
+    if (typeof preco !== 'number' || preco <= 0 || !isFinite(preco)) {
+      return res.status(400).json({ erro: 'Preco deve ser um numero positivo' });
+    }
     const updateData = { nome, descricao, preco, categoria };
     if (ativo !== undefined) updateData.ativo = ativo;
     if (tags !== undefined) updateData.tags = tags;
@@ -155,7 +173,7 @@ router.put('/:id', auth, requireGerente, async (req, res) => {
 });
 
 // PATCH /api/products/:id/toggle - Toggle ativo/inativo
-router.patch('/:id/toggle', auth, requireGerente, async (req, res) => {
+router.patch('/:id/toggle', auth, requirePermissao('novo_produto'), async (req, res) => {
   try {
     const produto = await Product.findById(req.params.id);
     if (!produto) {
@@ -170,16 +188,17 @@ router.patch('/:id/toggle', auth, requireGerente, async (req, res) => {
   }
 });
 
-// DELETE /api/products/:id - Remover produto
-router.delete('/:id', auth, requireGerente, async (req, res) => {
+// DELETE /api/products/:id - Soft-delete (desativa produto, preserva historico)
+router.delete('/:id', auth, requirePermissao('novo_produto'), async (req, res) => {
   try {
-    const produto = await Product.findByIdAndDelete(req.params.id);
+    const produto = await Product.findById(req.params.id);
     if (!produto) {
       return res.status(404).json({ erro: 'Produto nao encontrado' });
     }
-    await Movimentacao.deleteMany({ produtoId: req.params.id });
+    produto.ativo = false;
+    await produto.save();
     registrarLog({ acao: 'excluir', entidade: 'produto', entidadeId: produto._id, entidadeNome: produto.nome, userId: req.userId });
-    res.json({ mensagem: 'Produto removido com sucesso' });
+    res.json({ mensagem: 'Produto desativado com sucesso' });
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao remover produto' });
   }

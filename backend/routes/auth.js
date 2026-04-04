@@ -2,6 +2,9 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Venda = require('../models/Venda');
+const Movimentacao = require('../models/Movimentacao');
+const Log = require('../models/Log');
 const auth = require('../middleware/auth');
 const requireGerente = require('../middleware/requireGerente');
 const { registrarLog } = require('../helpers/logHelper');
@@ -76,7 +79,7 @@ router.post('/login', async (req, res) => {
       expiresIn: '24h'
     });
 
-    res.json({ token, nome: usuario.nome, role: usuario.role });
+    res.json({ token, nome: usuario.nome, role: usuario.role, abasPermitidas: usuario.abasPermitidas || [] });
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao fazer login' });
   }
@@ -85,7 +88,7 @@ router.post('/login', async (req, res) => {
 // GET /api/auth/funcionarios - Listar todos os usuarios (apenas gerentes)
 router.get('/funcionarios', auth, requireGerente, async (req, res) => {
   try {
-    const funcionarios = await User.find({}, 'nome email role');
+    const funcionarios = await User.find({}, 'nome email role abasPermitidas');
     res.json(funcionarios);
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao buscar funcionarios' });
@@ -104,10 +107,59 @@ router.delete('/funcionarios/:id', auth, requireGerente, async (req, res) => {
     if (!usuario) {
       return res.status(404).json({ erro: 'Funcionario nao encontrado' });
     }
+    // Limpar referencias do usuario deletado
+    await Venda.updateMany({ userId: req.params.id }, { $set: { userId: null } });
+    await Movimentacao.updateMany({ userId: req.params.id }, { $set: { userId: null } });
+    await Log.updateMany({ userId: req.params.id }, { $set: { userId: null } });
     registrarLog({ acao: 'remover_funcionario', entidade: 'funcionario', entidadeId: usuario._id, entidadeNome: usuario.nome, userId: req.userId });
     res.json({ mensagem: 'Funcionario removido com sucesso' });
   } catch (erro) {
     res.status(500).json({ erro: 'Erro ao remover funcionario' });
+  }
+});
+
+// PUT /api/auth/funcionarios/:id/permissoes - Atualizar permissoes de abas
+const ABAS_VALIDAS = ['dashboard', 'novo_produto', 'movimentacoes', 'alertas'];
+
+router.put('/funcionarios/:id/permissoes', auth, requireGerente, async (req, res) => {
+  try {
+    const { abasPermitidas } = req.body;
+
+    if (!Array.isArray(abasPermitidas)) {
+      return res.status(400).json({ erro: 'abasPermitidas deve ser um array' });
+    }
+
+    // Validar que todas as abas sao validas
+    const invalidas = abasPermitidas.filter(a => !ABAS_VALIDAS.includes(a));
+    if (invalidas.length > 0) {
+      return res.status(400).json({ erro: `Abas invalidas: ${invalidas.join(', ')}` });
+    }
+
+    const usuario = await User.findById(req.params.id);
+    if (!usuario) {
+      return res.status(404).json({ erro: 'Funcionario nao encontrado' });
+    }
+
+    // Nao permitir modificar gerentes
+    if (usuario.role === 'gerente') {
+      return res.status(400).json({ erro: 'Nao e possivel modificar permissoes de gerentes' });
+    }
+
+    usuario.abasPermitidas = abasPermitidas;
+    await usuario.save();
+
+    registrarLog({
+      acao: 'editar',
+      entidade: 'funcionario',
+      entidadeId: usuario._id,
+      entidadeNome: usuario.nome,
+      userId: req.userId,
+      detalhes: `Permissoes atualizadas: ${abasPermitidas.length > 0 ? abasPermitidas.join(', ') : 'nenhuma'}`
+    });
+
+    res.json({ mensagem: 'Permissoes atualizadas', abasPermitidas: usuario.abasPermitidas });
+  } catch (erro) {
+    res.status(500).json({ erro: 'Erro ao atualizar permissoes' });
   }
 });
 

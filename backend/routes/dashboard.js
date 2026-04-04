@@ -4,11 +4,12 @@ const Meta = require('../models/Meta');
 const Product = require('../models/Product');
 const Movimentacao = require('../models/Movimentacao');
 const auth = require('../middleware/auth');
+const requirePermissao = require('../middleware/requirePermissao');
 
 const router = express.Router();
 
-// GET /api/dashboard - Dados agregados do dashboard
-router.get('/', auth, async (req, res) => {
+// GET /api/dashboard - Dados agregados do dashboard (gerente ou com permissao)
+router.get('/', auth, requirePermissao('dashboard'), async (req, res) => {
   try {
     const TZ = 'America/Sao_Paulo';
     const agora = new Date();

@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/Toast';
 import { validarNome, validarPreco } from '../helpers/validacao';
+import { temPermissao } from '../helpers/permissoes';
 
 const TAGS_PREDEFINIDAS = ['Vegano', 'Sem Lactose', 'Sem Gluten'];
 
@@ -34,7 +35,7 @@ function ProductForm() {
       return;
     }
 
-    if (!isGerente) {
+    if (!temPermissao('novo_produto')) {
       navigate('/products');
       return;
     }

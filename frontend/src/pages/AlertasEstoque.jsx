@@ -2,20 +2,22 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useToast } from '../components/Toast';
+import { temPermissao } from '../helpers/permissoes';
 
 function AlertasEstoque() {
+  const { showToast } = useToast();
   const [produtos, setProdutos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  const userRole = localStorage.getItem('userRole');
 
   useEffect(() => {
     if (!token) {
       navigate('/login');
       return;
     }
-    if (userRole !== 'gerente') {
+    if (!temPermissao('alertas')) {
       navigate('/products');
       return;
     }
@@ -34,7 +36,7 @@ function AlertasEstoque() {
       .then((data) => {
         if (data) setProdutos(data);
       })
-      .catch(() => console.error('Erro ao carregar produtos'))
+      .catch(() => showToast('Erro ao carregar produtos', 'error'))
       .finally(() => setCarregando(false));
   }, []);
 

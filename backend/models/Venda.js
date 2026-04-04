@@ -22,5 +22,6 @@ const vendaSchema = new mongoose.Schema({
 
 vendaSchema.index({ criadoEm: -1 });
 vendaSchema.index({ status: 1 });
+vendaSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('Venda', vendaSchema);

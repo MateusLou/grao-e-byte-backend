@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useToast } from '../components/Toast';
+import { temPermissao } from '../helpers/permissoes';
 
 const CATEGORIAS = ['Graos', 'Insumos', 'Alimentos', 'Descartaveis'];
 
@@ -18,6 +20,7 @@ const ACOES_HISTORICO = {
 };
 
 function Movimentacoes() {
+  const { showToast } = useToast();
   const [abaGerente, setAbaGerente] = useState('movimentacoes');
 
   // Movimentacoes state
@@ -62,7 +65,7 @@ function Movimentacoes() {
       const data = await res.json();
       if (data) setMovimentacoes(data);
     } catch {
-      console.error('Erro ao carregar movimentacoes');
+      showToast('Erro ao carregar movimentacoes', 'error');
     }
   };
 
@@ -87,7 +90,7 @@ function Movimentacoes() {
       const data = await response.json();
       setLogs(data);
     } catch {
-      console.error('Erro ao carregar logs');
+      showToast('Erro ao carregar historico', 'error');
     } finally {
       setCarregandoLogs(false);
     }
@@ -98,7 +101,7 @@ function Movimentacoes() {
       navigate('/login');
       return;
     }
-    if (userRole !== 'gerente') {
+    if (!temPermissao('movimentacoes')) {
       navigate('/products');
       return;
     }
@@ -141,7 +144,7 @@ function Movimentacoes() {
   };
 
   const movFiltradas = useMemo(() => {
-    return movimentacoes.filter((m) => {
+    let result = movimentacoes.filter((m) => {
       if (filtroTipo !== 'todos' && m.tipo !== filtroTipo) return false;
       if (filtroCategoria !== 'todos' && m.produtoId?.categoria !== filtroCategoria) return false;
       if (filtroProduto !== 'todos' && m.produtoId?._id !== filtroProduto) return false;
@@ -211,7 +214,7 @@ function Movimentacoes() {
 
   // Filtrar logs (mostra todas as ações exceto entrada/saida que ficam na aba Movimentações)
   const logsFiltrados = useMemo(() => {
-    return logs.filter((log) => {
+    let result = logs.filter((log) => {
       if (log.acao === 'entrada' || log.acao === 'saida') return false;
 
       if (filtroAcao !== 'todos' && log.acao !== filtroAcao) return false;
@@ -259,7 +262,7 @@ function Movimentacoes() {
         setVendaDetalhe(data);
       }
     } catch {
-      console.error('Erro ao carregar venda');
+      showToast('Erro ao carregar venda', 'error');
     } finally {
       setCarregandoVenda(false);
     }

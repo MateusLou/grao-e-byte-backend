@@ -9,4 +9,8 @@ const movimentacaoSchema = new mongoose.Schema({
   data: { type: Date, default: Date.now }
 });
 
+movimentacaoSchema.index({ produtoId: 1 });
+movimentacaoSchema.index({ userId: 1 });
+movimentacaoSchema.index({ data: -1 });
+
 module.exports = mongoose.model('Movimentacao', movimentacaoSchema);

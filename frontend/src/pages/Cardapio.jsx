@@ -18,12 +18,13 @@ const CORES_TAG = {
 function Cardapio() {
   const [produtos, setProdutos] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(false);
 
   useEffect(() => {
     fetch('/api/cardapio')
       .then((res) => res.json())
       .then((data) => setProdutos(data))
-      .catch(() => {})
+      .catch(() => setErro(true))
       .finally(() => setCarregando(false));
   }, []);
 
@@ -53,7 +54,9 @@ function Cardapio() {
         <p className="cardapio-subtitle">Nosso Cardápio</p>
       </header>
 
-      {categorias.length === 0 ? (
+      {erro ? (
+        <p style={{ textAlign: 'center', color: '#DC2626', marginTop: 40 }}>Erro ao carregar o cardápio. Tente novamente mais tarde.</p>
+      ) : categorias.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#999' }}>Nenhum produto disponível no momento.</p>
       ) : (
         categorias.map(([cat, items]) => (

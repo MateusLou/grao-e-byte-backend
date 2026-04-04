@@ -1,12 +1,12 @@
 const express = require('express');
 const Log = require('../models/Log');
 const auth = require('../middleware/auth');
-const requireGerente = require('../middleware/requireGerente');
+const requirePermissao = require('../middleware/requirePermissao');
 
 const router = express.Router();
 
-// GET /api/logs - Listar logs com filtros
-router.get('/', auth, requireGerente, async (req, res) => {
+// GET /api/logs - Listar logs com filtros (gerente ou com permissao movimentacoes)
+router.get('/', auth, requirePermissao('movimentacoes'), async (req, res) => {
   try {
     const { acao, entidade, dataInicio, dataFim } = req.query;
     const filtro = {};

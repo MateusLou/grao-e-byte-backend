@@ -18,4 +18,7 @@ const logSchema = new mongoose.Schema({
   data: { type: Date, default: Date.now }
 });
 
+logSchema.index({ userId: 1 });
+logSchema.index({ data: -1 });
+
 module.exports = mongoose.model('Log', logSchema);

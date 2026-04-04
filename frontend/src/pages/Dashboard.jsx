@@ -11,17 +11,27 @@ import TopVendidos from '../components/dashboard/TopVendidos';
 import GraficoPorHora from '../components/dashboard/GraficoPorHora';
 import UltimasVendas from '../components/dashboard/UltimasVendas';
 import StatusPedidos from '../components/dashboard/StatusPedidos';
-import QRCodeCardapio from '../components/QRCodeCardapio';
+import { temPermissao } from '../helpers/permissoes';
 
 function Dashboard() {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [mostrarQR, setMostrarQR] = useState(false);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
   const token = localStorage.getItem('token');
   const isGerente = localStorage.getItem('userRole') === 'gerente';
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    if (!temPermissao('dashboard')) {
+      navigate('/products');
+      return;
+    }
+  }, []);
 
   const fetchDashboard = useCallback(() => {
     if (!token) {
@@ -95,15 +105,6 @@ function Dashboard() {
           >
             Atualizar
           </button>
-          {isGerente && (
-            <button
-              className="btn-cancelar"
-              onClick={() => setMostrarQR(true)}
-              style={{ width: 'auto', minHeight: 40 }}
-            >
-              QR Code Cardapio
-            </button>
-          )}
         </div>
       </div>
 
@@ -132,7 +133,6 @@ function Dashboard() {
         <UltimasVendas dados={dados.ultimasVendas} />
       </div>
 
-      <QRCodeCardapio isOpen={mostrarQR} onClose={() => setMostrarQR(false)} />
     </Layout>
   );
 }
